@@ -1,0 +1,17 @@
+# conda env create -f base.yml
+
+
+name: paper2022
+channels:
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.9.7
+  - numpy
+  - pandas
+  - tqdm
+  - matplotlib
+  - plotly
+  - scikit-learn
+  - scipy

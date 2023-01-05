@@ -5,14 +5,25 @@ import time
 import argparse
 import importlib
 from MyProject.trainers import ActiveTrainer, BasicTrainer
-
+import os
+import wandb
+import random
+os.environ['WANDB_API_KEY'] = "e0f887ce4be7bebfe48930ffcff4027f49b02425"
 
 def train(configuration):
+    #start W and B
+    wandb.init(
+        # set the wandb project where this run will be logged
+        project="my-awesome-project",
+
+        # track hyperparameters and run metadata
+        config=configuration
+    )
+
     if configuration["trainer_config"]["use_tune"]:
         ###########################################
         # Use tune
         ###########################################
-
         ray.init()
 
         time_to_sleep = 5
@@ -44,6 +55,8 @@ def train(configuration):
         for i in range(configuration["trainer_config"]["num_epoch_without_tune"]):
             print("epoch ", i)
             trainer.train()
+    wandb.finish()
+
 
 
 if __name__ == "__main__":

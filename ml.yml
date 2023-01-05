@@ -1,0 +1,22 @@
+# conda activate paper2022
+# conda env update -f ml.yml
+
+channels:
+  - pytorch
+  - nvidia
+  - anaconda
+  - conda-forge
+  - defaults
+dependencies:
+  - pytorch
+  - torchvision
+  - torchaudio 
+  - pytorch-cuda=11.7
+  - tensorboard
+  - optuna
+  - multicore-tsne
+  - ray[tune]
+  - pip
+  - pip:
+    - tsnecuda # channel: cannylab 
+

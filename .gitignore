@@ -6,4 +6,5 @@ __pycache__
 data/
 data/raw/*
 data/processed/*
+wandb/
 
