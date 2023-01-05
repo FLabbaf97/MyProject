@@ -2,7 +2,7 @@ import torch
 import os
 import copy
 from torch.utils.data import DataLoader
-from utils import get_tensor_dataset
+from MyProject.utils import get_tensor_dataset
 from torch.utils.data import random_split
 from ray import tune
 import numpy as np
@@ -10,6 +10,8 @@ from scipy import stats
 from scipy.stats import spearmanr
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+from ray.air.integrations.wandb import setup_wandb
+from ray.air.integrations.wandb import WandbLoggerCallback
 
 ########################################################################################################################
 # Epoch loops
@@ -41,8 +43,10 @@ def train_epoch(data, loader, model, optim, scheduler=None):
         epoch_loss += loss.item()
     if scheduler:
         scheduler.step()
-    epoch_comb_r_squared = stats.linregress(
-        all_mean_preds, all_targets).rvalue**2
+    if (len(set(all_mean_preds)) > 2):
+        epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
+    else:
+        epoch_comb_r_squared = -1
 
     summary_dict = {
         "loss_mean": epoch_loss / num_batches,
@@ -100,10 +104,11 @@ def eval_epoch(data, loader, model):
 class BasicTrainer(tune.Trainable):
     def setup(self, config):
         print("Initializing regular training pipeline")
-
+        self.wandb = setup_wandb(
+            config, trial_id=self.trial_id, trial_name=self.trial_name, group="Example")
         self.batch_size = config["batch_size"]
-        # device_type = "cuda" if torch.cuda.is_available() else "cpu"
-        device_type = 'mps'
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        # device_type = 'mps'
         self.device = torch.device(device_type)
         self.training_it = 0
 
@@ -189,9 +194,6 @@ class BasicTrainer(tune.Trainable):
 
     def step(self):
 
-        last_lr = self.scheduler.optimizer.param_groups[0]['lr']
-        print ("last lr: ", last_lr)
-
         eval_metrics, _ = self.eval_epoch(
             self.data, self.valid_loader, self.model)
 
@@ -217,8 +219,12 @@ class BasicTrainer(tune.Trainable):
         else:
             self.patience += 1
 
+        last_lr = self.scheduler.optimizer.param_groups[0]['lr']
+        print ("last lr: ", last_lr)
+        metrics['current_lr'] = last_lr
         metrics['patience'] = self.patience
         metrics['all_space_explored'] = 0
+        self.wandb.log(metrics)
 
         return metrics
 

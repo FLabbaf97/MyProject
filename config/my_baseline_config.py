@@ -4,6 +4,7 @@ from MyProject.models import MyMLPPredictor
 from MyProject.utils import get_project_root
 from MyProject.trainers import train_epoch, eval_epoch, BasicTrainer
 import os
+from ray import tune
 
 
 ########################################################################################################################
@@ -12,14 +13,17 @@ import os
 
 
 pipeline_config = {
-    "use_tune": False,
+    "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    # "seed": tune.grid_search([2, 3, 4]),
-    "seed": 2,
+    "seed": tune.grid_search([2, 3, 4]),
+    # "seed": 2,
     # Optimizer config
-    "lr": 1e-2,
-    "weight_decay": 1e-1,
-    "batch_size": 1024,
+    # "lr": 1e-3,
+    "lr": tune.grid_search([1e-2,1e-3,1e-4]),
+    # "weight_decay": 1e-1,
+    "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
+    # "batch_size": 1024,
+    "batch_size": tune.grid_search([512,256,128]),
     'lr_step': 5e-1,
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
@@ -34,10 +38,21 @@ predictor_config = {
             64,
             1,
         ],
-    "drug_embed_hidden_layers":
+    "predictor_layers": tune.grid_search
+    ([
         [
-            512,
+            128,
+            64,
+            1,
         ],
+        [
+            128,
+            1,
+        ],
+
+    ])
+        
+    "drug_embed_hidden_layers":[512,],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
