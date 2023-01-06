@@ -295,9 +295,9 @@ class MyMLPPredictor(torch.nn.Module):
             layers_after_cell,
             0,
             self.drug_embed_len*2+self.cell_embed_len,
-            self.drug_embed_len
+            self.layer_dims[0]
         )
-        for i in range(len(self.layer_dims)-1):
+        for i in range(1,len(self.layer_dims)-1):
             layers_after_cell = self.add_layer(
                 layers_after_cell,
                 i,
