@@ -1,10 +1,25 @@
-from MyProject.models import MyBaseline, PredictiveUncertaintyModel
-from MyProject.trainers import ActiveTrainer
-from MyProject.datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
-from MyProject.models import MyMLPPredictor
-from MyProject.utils import get_project_root
-from MyProject.trainers import train_epoch, eval_epoch, BasicTrainer, ActiveTrainer
-from MyProject.aquisition import GreedyAcquisition , UCB, RandomAcquisition
+
+import sys
+import os
+ 
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+ 
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+ 
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+from models import MyBaseline, PredictiveUncertaintyModel
+from trainers import ActiveTrainer
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
+from models import MyMLPPredictor
+from utils import get_project_root
+from trainers import train_epoch, eval_epoch, BasicTrainer, ActiveTrainer
+from aquisition import GreedyAcquisition , UCB, RandomAcquisition
 from ray import tune
 
 import os

@@ -1,3 +1,19 @@
+
+import sys
+import os
+ 
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+ 
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+ 
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+
 import numpy as np
 import pandas as pd
 import torch
@@ -8,9 +24,9 @@ import reservoir as rsv
 from sklearn.decomposition import PCA
 from pandas.api.types import is_string_dtype, is_numeric_dtype
 from pathlib import Path
-from MyProject.utils import get_project_root, get_fingerprint
-from MyProject.models import Simple_AE
-from MyProject.utils import find_cell_lines
+from utils import get_project_root, get_fingerprint
+from models import Simple_AE
+from utils import find_cell_lines
 
 ########################################################################################################################
 # Underlying data object

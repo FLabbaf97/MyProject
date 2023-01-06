@@ -1,8 +1,24 @@
-from MyProject.datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
-from MyProject.models import MyBaseline
-from MyProject.models import MyMLPPredictor
-from MyProject.utils import get_project_root
-from MyProject.trainers import train_epoch, eval_epoch, BasicTrainer
+
+import sys
+import os
+ 
+# getting the name of the directory
+# where the this file is present.
+current = os.path.dirname(os.path.realpath(__file__))
+ 
+# Getting the parent directory name
+# where the current directory is present.
+parent = os.path.dirname(current)
+ 
+# adding the parent directory to
+# the sys.path.
+sys.path.append(parent)
+
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
+from models import MyBaseline
+from models import MyMLPPredictor
+from utils import get_project_root
+from trainers import train_epoch, eval_epoch, BasicTrainer
 import os
 
 

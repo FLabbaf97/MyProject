@@ -6,7 +6,7 @@ The first time you need to run:
 """
 
 setup(
-    name='MyProject',
+    name='myProject',
     description='',
     packages=find_packages(include=["MyProject", "MyProject.*"]),
     version="0.1")

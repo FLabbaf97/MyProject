@@ -2,7 +2,7 @@ import torch
 import os
 import copy
 from torch.utils.data import DataLoader
-from MyProject.utils import get_tensor_dataset
+from utils import get_tensor_dataset
 from torch.utils.data import random_split
 from ray import tune
 import numpy as np

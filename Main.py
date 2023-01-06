@@ -1,10 +1,10 @@
-from MyProject.utils import get_tensor_dataset, trial_dirname_creator
+from utils import get_tensor_dataset, trial_dirname_creator
 from ray import tune
 import ray
 import time
 import argparse
 import importlib
-from MyProject.trainers import ActiveTrainer, BasicTrainer
+from trainers import ActiveTrainer, BasicTrainer
 import os
 import wandb
 import random
@@ -63,8 +63,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # Retrieve configuration
-    my_config = importlib.import_module("MyProject.config." + args.config)
-    print("Running with configuration from", "MyProject.config." + args.config)
+    my_config = importlib.import_module("config." + args.config)
+    print("Running with configuration from", "config." + args.config)
 
     # Set the name of the log directory after the name of the config file
     my_config.configuration["name"] = args.config

@@ -155,8 +155,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Retrieve configuration
-    my_config = importlib.import_module("MyProject.config." + args.config)
-    print("Running with configuration from", "MyProject.config." + args.config)
+    my_config = importlib.import_module("config." + args.config)
+    print("Running with configuration from", "config." + args.config)
 
     # Set the name of the log directory after the name of the config file
     my_config.configuration["name"] = args.config
