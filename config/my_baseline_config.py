@@ -15,7 +15,7 @@ from ray import tune
 pipeline_config = {
     "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([2, 3, 4]),
+    "seed": tune.grid_search([2,3,4]),
     # "seed": 2,
     # Optimizer config
     # "lr": 1e-3,
@@ -49,9 +49,13 @@ predictor_config = {
             128,
             1,
         ],
+        # [
+        #     512,
+        #     64,
+        #     1,
+        # ],
+    ]),
 
-    ])
-        
     "drug_embed_hidden_layers":[512,],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
@@ -115,4 +119,5 @@ configuration = {
     "resources_per_trial": {"cpu": 8, "gpu": 0},
     "scheduler": None,
     "search_alg": None,
+    # "pruner" : tune.pruner.MedianStopper(mode='min'),
 }
