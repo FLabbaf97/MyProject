@@ -11,7 +11,6 @@ from scipy.stats import spearmanr
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from ray.air.integrations.wandb import setup_wandb
-from ray.air.integrations.wandb import WandbLoggerCallback
 
 ########################################################################################################################
 # Epoch loops

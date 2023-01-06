@@ -8,17 +8,10 @@ from MyProject.trainers import ActiveTrainer, BasicTrainer
 import os
 import wandb
 import random
+
 os.environ['WANDB_API_KEY'] = "e0f887ce4be7bebfe48930ffcff4027f49b02425"
 
 def train(configuration):
-    #start W and B
-    wandb.init(
-        # set the wandb project where this run will be logged
-        project="my-awesome-project",
-
-        # track hyperparameters and run metadata
-        config=configuration
-    )
 
     if configuration["trainer_config"]["use_tune"]:
         ###########################################
@@ -36,13 +29,13 @@ def train(configuration):
             name=configuration["name"],
             config=configuration["trainer_config"],
             stop=configuration["stop"],
-            resources_per_trial=configuration["resources_per_trial"],
+            # resources_per_trial=configuration["resources_per_trial"],
             local_dir=configuration["summaries_dir"],
             checkpoint_freq=configuration.get("checkpoint_freq"),
             checkpoint_at_end=configuration.get("checkpoint_at_end"),
             checkpoint_score_attr=configuration.get("checkpoint_score_attr"),
             keep_checkpoints_num=configuration.get("keep_checkpoints_num"),
-            trial_dirname_creator=trial_dirname_creator
+            trial_dirname_creator=trial_dirname_creator,
         )
 
     else:
@@ -55,7 +48,6 @@ def train(configuration):
         for i in range(configuration["trainer_config"]["num_epoch_without_tune"]):
             print("epoch ", i)
             trainer.train()
-    wandb.finish()
 
 
 
