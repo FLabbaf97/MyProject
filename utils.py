@@ -1,6 +1,6 @@
 from pathlib import Path
-from rdkit import Chem
-from rdkit.Chem import AllChem
+#from rdkit import Chem
+#from rdkit.Chem import AllChem
 import numpy as np
 from torch.utils.data import TensorDataset
 
@@ -12,14 +12,14 @@ def get_project_root():
 def get_fingerprint(smile, radius, n_bits):
     if smile == "none":
         return np.array([-1] * n_bits)
-    try:
-        return np.array(
-            AllChem.GetMorganFingerprintAsBitVect(
-                Chem.MolFromSmiles(smile), radius, n_bits
-            )
-        )
-    except Exception as ex:
-        return np.array([-1] * n_bits)
+ #   try:
+  #      return np.array(
+   #         AllChem.GetMorganFingerprintAsBitVect(
+    #            Chem.MolFromSmiles(smile), radius, n_bits
+     #       )
+      #  )
+  #  except Exception as ex:
+   #     return np.array([-1] * n_bits)
 
 
 ########################################################################################################################
