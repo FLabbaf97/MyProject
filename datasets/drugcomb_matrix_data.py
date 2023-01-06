@@ -8,8 +8,8 @@ import reservoir as rsv
 from sklearn.decomposition import PCA
 from pandas.api.types import is_string_dtype, is_numeric_dtype
 from pathlib import Path
-from utils import get_project_root, get_fingerprint
-from models import Simple_AE
+from MyProject.utils import get_project_root, get_fingerprint
+from MyProject.models import Simple_AE
 from MyProject.utils import find_cell_lines
 
 ########################################################################################################################
