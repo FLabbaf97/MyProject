@@ -13,7 +13,7 @@ parent = os.path.dirname(current)
 # adding the parent directory to
 # the sys.path.
 sys.path.append(parent)
-from models import MyBaseline, PredictiveUncertaintyModel
+from models import MyBaseline, PredictiveUncertaintyModel, EnsembleModel
 from trainers import ActiveTrainer
 from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
 from models import MyMLPPredictor
@@ -31,10 +31,10 @@ import os
 
 
 pipeline_config = {
-    "use_tune": False,
+    "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    # "seed": tune.grid_search([2, 3, 4]),
-    "seed": 2,
+    "seed": tune.grid_search([2, 3, 4]),
+    # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
     "weight_decay": 1e-2,
@@ -76,7 +76,7 @@ autorncoder_config = {
 
 
 model_config = {
-    "model": PredictiveUncertaintyModel,
+    "model": tune.grid_search([PredictiveUncertaintyModel,EnsembleModel]),
     "load_model_weights": False,
 }
 
@@ -98,13 +98,13 @@ dataset_config = {
 
 active_learning_config = {
     "ensemble_size": 5,
-    # "acquisition": tune.grid_search([GreedyAcquisition, UCB, RandomAcquisition]),
-    "acquisition": UCB,
+    "acquisition": tune.grid_search([GreedyAcquisition, UCB, RandomAcquisition]),
+    # "acquisition": UCB,
     "patience_max": 4,
-    "kappa": 1,
+    "kappa": tune.grid_search([4,2,1,0.5,0.25]),
     "kappa_decrease_factor": 1,
-    "n_epoch_between_queries": 100,
-    "acquire_n_at_a_time": 30,
+    "n_epoch_between_queries": 150,
+    "acquire_n_at_a_time": tune.grid_search([30,60,120,240]),
     "n_initial": 30,
 }
 
@@ -124,7 +124,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 50,},
+    "stop": {"training_iteration": 500,},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,
