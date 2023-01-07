@@ -33,12 +33,12 @@ import os
 pipeline_config = {
     "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    # "seed": tune.grid_search([2, 3, 4]),
-    "seed": 2,
+    "seed": tune.grid_search([2, 3, 4]),
+    # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
-    "weight_decay": 1e-1,
-    "batch_size": 128,
+    "weight_decay": 1e-2,
+    "batch_size": 256,
     'lr_step': 5e-1,
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
@@ -98,12 +98,12 @@ dataset_config = {
 
 active_learning_config = {
     "ensemble_size": 5,
-    # "acquisition": tune.grid_search([GreedyAcquisition, UCB, RandomAcquisition]),
-    "acquisition": UCB,
+    "acquisition": tune.grid_search([GreedyAcquisition, UCB, RandomAcquisition]),
+    # "acquisition": UCB,
     "patience_max": 4,
     "kappa": 1,
     "kappa_decrease_factor": 1,
-    "n_epoch_between_queries": 500,
+    "n_epoch_between_queries": 100,
     "acquire_n_at_a_time": 30,
     "n_initial": 30,
 }
@@ -124,12 +124,12 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 200,},
+    "stop": {"training_iteration": 50,},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,
     "checkpoint_freq": 1,
-    "resources_per_trial": {"cpu": 8, "gpu": 0},
+    # "resources_per_trial": {"cpu": 8, "gpu": 0},
     "scheduler": None,
     "search_alg": None,
 }

@@ -17,7 +17,7 @@ def train(configuration):
         ###########################################
         # Use tune
         ###########################################
-        ray.init()
+        ray.init(num_cpus=6,)
 
         time_to_sleep = 5
         print("Sleeping for %d seconds" % time_to_sleep)
