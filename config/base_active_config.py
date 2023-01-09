@@ -43,6 +43,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
+    "wandb_group": 'active learning with higher acquire_n_at_a_time and steps'
 }
 
 predictor_config = {
@@ -59,7 +60,7 @@ predictor_config = {
         ],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
-    "allow_neg_eigval": True,
+    # "allow_neg_eigval": True,
     "drug_embed_len": 128,
     'cell_embed_len': 128,
     'drug_in_len': 1173,
@@ -101,7 +102,7 @@ active_learning_config = {
     "acquisition": tune.grid_search([GreedyAcquisition, UCB, RandomAcquisition]),
     # "acquisition": UCB,
     "patience_max": 4,
-    "kappa": tune.grid_search([4,2,1,0.5,0.25]),
+    "kappa": tune.grid_search([4,1,0.25]),
     "kappa_decrease_factor": 1,
     "n_epoch_between_queries": 150,
     "acquire_n_at_a_time": tune.grid_search([30,60,120,240]),

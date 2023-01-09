@@ -105,7 +105,7 @@ class BasicTrainer(tune.Trainable):
         print("Initializing regular training pipeline")
         if wandb:
             self.wandb = setup_wandb(
-                config, trial_id=self.trial_id, trial_name=self.trial_name, group="example")
+                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.batch_size = config["batch_size"]
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         # device_type = 'mps'
@@ -252,7 +252,7 @@ class ActiveTrainer(BasicTrainer):
         super(ActiveTrainer, self).setup(config,wandb=False)
         if wandb:
             self.wandb = setup_wandb(
-                config, trial_id=self.trial_id, trial_name=self.trial_name, group="Example")
+                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.acquire_n_at_a_time = config["acquire_n_at_a_time"]
         self.acquisition = config["acquisition"](config)
         self.n_epoch_between_queries = config["n_epoch_between_queries"]
