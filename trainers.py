@@ -103,6 +103,7 @@ def eval_epoch(data, loader, model):
 class BasicTrainer(tune.Trainable):
     def setup(self, config, wandb=True):
         print("Initializing regular training pipeline")
+        self.is_wandb = wandb
         if wandb:
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
@@ -224,7 +225,8 @@ class BasicTrainer(tune.Trainable):
         metrics['current_lr'] = last_lr
         metrics['patience'] = self.patience
         metrics['all_space_explored'] = 0
-        self.wandb.log(metrics)
+        if self.is_wandb:
+            self.wandb.log(metrics)
 
         return metrics
 
@@ -369,7 +371,7 @@ class ActiveTrainer(BasicTrainer):
         metrics["all_space_explored"] = 0
         self.training_it += 1
         self.wandb.log(metrics)
-
+        
         return metrics
 
     def train_between_queries(self):
