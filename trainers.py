@@ -1,6 +1,7 @@
 import torch
 import os
 import copy
+from torch import optim
 from torch.utils.data import DataLoader
 from utils import get_tensor_dataset
 from torch.utils.data import random_split
@@ -9,7 +10,7 @@ import numpy as np
 from scipy import stats
 from scipy.stats import spearmanr
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, PolynomialLR
 from ray.air.integrations.wandb import setup_wandb
 
 ########################################################################################################################
@@ -183,9 +184,12 @@ class BasicTrainer(tune.Trainable):
             lr=config["lr"],
             weight_decay=config["weight_decay"],
         )
-        self.scheduler = torch.optim.lr_scheduler.StepLR(
-            self.optim, 10, gamma=config['lr_step'])
-
+        # self.scheduler = torch.optim.lr_scheduler.StepLR(
+            # self.optim, 10, gamma=config['lr_step'])
+        self.scheduler = PolynomialLR(optim,
+                                      # The number of steps that the scheduler decays the learning rate.
+                                      total_iters=config['total_epoch'],
+                                      power=2)  # The power of the polynomial.
 
         self.train_epoch = config["train_epoch"]
         self.eval_epoch = config["eval_epoch"]
@@ -371,7 +375,7 @@ class ActiveTrainer(BasicTrainer):
         metrics["all_space_explored"] = 0
         self.training_it += 1
         self.wandb.log(metrics)
-        
+
         return metrics
 
     def train_between_queries(self):

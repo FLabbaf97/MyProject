@@ -31,20 +31,21 @@ from ray import tune
 pipeline_config = {
     "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([2,3,4]),
+    "seed": tune.grid_search([2,3]),
     # "seed": 2,
     # Optimizer config
-    # "lr": 1e-3,
-    "lr": tune.grid_search([1e-2,1e-3,1e-4]),
-    # "weight_decay": 1e-1,
-    "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
-    # "batch_size": 1024,
-    "batch_size": tune.grid_search([512,256,128]),
-    'lr_step': 5e-1,
+    # "lr": 1e-2,
+    "lr": tune.grid_search([1e-2,1e-1]),
+    "weight_decay": 1e-2,
+    # "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
+    "batch_size": 256,
+    # "batch_size": tune.grid_search([512,256,128]),
+    # 'lr_step': 5e-1,
+    'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'baseline'
+    "wandb_group": 'baseline_lr_scheduler'
 }
 
 predictor_config = {
@@ -56,23 +57,12 @@ predictor_config = {
             1,
         ],
     "predictor_layers": tune.grid_search
-    ([
-        [
-            128,
-            64,
-            1,
-        ],
-        [
-            128,
-            1,
-        ],
-        # [
-        #     512,
-        #     64,
-        #     1,
-        # ],
-    ]),
-
+    
+    [
+        128,
+        64,
+        1,
+    ],
     "drug_embed_hidden_layers":[512,],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
@@ -128,7 +118,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 150, 'patience': 10},
+    "stop": {"training_iteration": 500, 'patience': 10},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,
