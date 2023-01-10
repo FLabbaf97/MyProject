@@ -11,13 +11,16 @@ import random
 
 os.environ['WANDB_API_KEY'] = "e0f887ce4be7bebfe48930ffcff4027f49b02425"
 
-def train(configuration):
+def train(configuration, num_cpu='all'):
 
     if configuration["trainer_config"]["use_tune"]:
         ###########################################
         # Use tune
         ###########################################
-        ray.init(num_cpus=6,)
+        if num_cpu=='all':
+            ray.init()
+        else:
+            ray.init(num_cpus=num_cpu,)
 
         time_to_sleep = 5
         print("Sleeping for %d seconds" % time_to_sleep)
@@ -60,6 +63,12 @@ if __name__ == "__main__":
         type=str,
         help='Name of the configuration file without ".py" at the end',
     )
+    parser.add_argument(
+        "--cpu",
+        type=str,
+        help='number of resources',
+        default='all'
+    )
     args = parser.parse_args()
 
     # Retrieve configuration
@@ -70,4 +79,4 @@ if __name__ == "__main__":
     my_config.configuration["name"] = args.config
 
     # Train
-    train(my_config.configuration)
+    train(my_config.configuration, num_cpu=int(args.cpu))
