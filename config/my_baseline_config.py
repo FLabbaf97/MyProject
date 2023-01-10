@@ -40,8 +40,9 @@ pipeline_config = {
     # "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
     "batch_size": 256,
     # "batch_size": tune.grid_search([512,256,128]),
-    # 'lr_step': 5e-1,
-    'total_epoch': tune.grid_search[200,400,1000],
+    'lr_step': 5e-1,
+    'milestones': tune.grid_search([[16,32,64,128,256,512],[16,32,64,80,96,122,138,154,170,186],[10,30,60,90,120,150,180,210]]),
+    # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
@@ -56,8 +57,7 @@ predictor_config = {
             64,
             1,
         ],
-    "predictor_layers": tune.grid_search
-    
+    "predictor_layers": 
     [
         128,
         64,

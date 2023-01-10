@@ -10,7 +10,7 @@ import numpy as np
 from scipy import stats
 from scipy.stats import spearmanr
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ReduceLROnPlateau, PolynomialLR
+from torch.optim.lr_scheduler import ReduceLROnPlateau, MultiStepLR
 from ray.air.integrations.wandb import setup_wandb
 
 ########################################################################################################################
@@ -186,10 +186,8 @@ class BasicTrainer(tune.Trainable):
         )
         # self.scheduler = torch.optim.lr_scheduler.StepLR(
             # self.optim, 10, gamma=config['lr_step'])
-        self.scheduler = PolynomialLR(optim,
-                                      # The number of steps that the scheduler decays the learning rate.
-                                      total_iters=config['total_epoch'],
-                                      power=2)  # The power of the polynomial.
+        self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
+            optim, milestones=config["milestones"], gamma=config['lr_step'])
 
         self.train_epoch = config["train_epoch"]
         self.eval_epoch = config["eval_epoch"]
