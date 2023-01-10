@@ -35,13 +35,18 @@ pipeline_config = {
     # "seed": 2,
     # Optimizer config
     # "lr": 1e-2,
-    "lr": tune.grid_search([1e-2,1e-1]),
+    "lr": tune.grid_search([1e-2,1e-3]),
     "weight_decay": 1e-2,
     # "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
     "batch_size": 256,
     # "batch_size": tune.grid_search([512,256,128]),
-    'lr_step': 5e-1,
-    'milestones': tune.grid_search([[16,32,64,128,256,512],[16,32,64,80,96,122,138,154,170,186],[10,30,60,90,120,150,180,210]]),
+    'lr_step': tune.grid_search([5e-1,1e-1]),
+    'milestones': tune.grid_search([
+        [8,16,32,64,128,256,512],
+        [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190],
+        [10,30,60,90,120,150,180,210],
+        [10,20,30,40,50,70,90,110,150,190]
+        ]),
     # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
