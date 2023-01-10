@@ -187,7 +187,7 @@ class BasicTrainer(tune.Trainable):
         # self.scheduler = torch.optim.lr_scheduler.StepLR(
             # self.optim, 10, gamma=config['lr_step'])
         self.scheduler = torch.optim.lr_scheduler.MultiStepLR(
-            optim, milestones=config["milestones"], gamma=config['lr_step'])
+            self.optim, milestones=config["milestones"], gamma=config['lr_step'])
 
         self.train_epoch = config["train_epoch"]
         self.eval_epoch = config["eval_epoch"]
