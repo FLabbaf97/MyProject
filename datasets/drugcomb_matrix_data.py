@@ -1,15 +1,15 @@
 
 import sys
 import os
- 
+
 # getting the name of the directory
 # where the this file is present.
 current = os.path.dirname(os.path.realpath(__file__))
- 
+
 # Getting the parent directory name
 # where the current directory is present.
 parent = os.path.dirname(current)
- 
+
 # adding the parent directory to
 # the sys.path.
 sys.path.append(parent)
@@ -20,7 +20,7 @@ import torch
 import os
 import random
 import copy
-import reservoir as rsv
+#import reservoir as rsv
 from sklearn.decomposition import PCA
 from pandas.api.types import is_string_dtype, is_numeric_dtype
 from pathlib import Path
@@ -580,7 +580,7 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
         super().__init__(fp_bits, fp_radius, cell_line, study_name, in_house_data, rounds_to_include, AE_config)
-        
+
 
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
         # Add drug index information to the df
@@ -637,7 +637,7 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
             cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
 
-        
+
 
 ########################################################################################################################
 # Dataset objects where some drug features are removed
