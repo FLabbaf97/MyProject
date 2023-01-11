@@ -69,7 +69,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 300, "patience":20},
+    "stop": {"training_iteration": 600},
     # "checkpoint_score_attr": 'eval/comb_r_squared',
     # "keep_checkpoints_num": 1,
     # "checkpoint_at_end": False,
