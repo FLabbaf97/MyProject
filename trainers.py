@@ -543,6 +543,7 @@ class DAETrainer(tune.Trainable):
             # Iterate over data.
             # for data in data_loaders[phase]:
             for batchidx, (x, meta, idx) in enumerate(self.data_loaders[phase]):
+                x = x.to(self.device)
                 z = x
                 y = np.random.binomial(
                     1, self.noise, (z.shape[0], z.shape[1]))
