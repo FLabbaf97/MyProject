@@ -8,7 +8,7 @@ from torch.utils.data import random_split
 from ray import tune
 import numpy as np
 from scipy import stats
-from scipy.stats import spearmanr
+from scipy.stats import spearmanr, pearsonr
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau, MultiStepLR
 from ray.air.integrations.wandb import setup_wandb
@@ -47,10 +47,11 @@ def train_epoch(data, loader, model, optim, scheduler=None):
         epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
     else:
         epoch_comb_r_squared = -1
-
+    epoch_pearson_r = pearsonr(all_targets, all_mean_preds)
     summary_dict = {
         "loss_mean": epoch_loss / num_batches,
-        "comb_r_squared": epoch_comb_r_squared
+        "comb_r_squared": epoch_comb_r_squared,
+        'pearson_r': epoch_pearson_r
     }
     # print("Training", summary_dict)
 
@@ -82,10 +83,11 @@ def eval_epoch(data, loader, model):
         epoch_comb_r_squared = stats.linregress(
             all_mean_preds, all_targets).rvalue**2
         epoch_spear = spearmanr(all_targets, all_mean_preds).correlation
-
+        epoch_pearson_r = pearsonr(all_targets, all_mean_preds)
     summary_dict = {
         "loss_mean": epoch_loss / num_batches,
         "comb_r_squared": epoch_comb_r_squared,
+        'pearson_r': epoch_pearson_r,
         "spearman": epoch_spear
     }
 
