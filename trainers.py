@@ -12,6 +12,11 @@ from scipy.stats import spearmanr, pearsonr
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau, MultiStepLR
 from ray.air.integrations.wandb import setup_wandb
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from data_loaders import CellGeneDataset, collate_fn
+
+
 
 ########################################################################################################################
 # Epoch loops
@@ -469,32 +474,61 @@ class ActiveTrainer(BasicTrainer):
 ########################################################################################################################
 # Gene embeding autoencoder Trainer
 ########################################################################################################################
-def train_DAE_model(model, data_loaders={}, optimizer=None, loss_function=None, n_epochs=100, scheduler=None, load=False, config={}, save_path="", eval=False):
+class DAETrainer(tune.Trainable):
+    def setup(self, config):
+        save_path = 'saved/'
+        self.wandb = setup_wandb(
+            config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
+        self.batch_size = config["batch_size"]
+        self.noise = config['noise']
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device_type)
+        self.training_it = 0
+        self.save_path = save_path+config["name"]+"/"
+        if ~os.path.exists(self.save_path):
+            os.makedirs(self.save_path, exist_ok=True)
+        self.data_path = config['data_path']
 
-    if (load != False):
-        if (os.path.exists(save_path)):
-            model.load_state_dict(torch.load(save_path))
-            return model, 0
-        else:
-            print("Warning: Failed to load existing file, proceed to the trainning process.")
+        # prepare dataloaders for gene_expression
+        self.cell_features = pd.read_csv(self.data_path).set_index('cell_line_name')
+        # Split the data into a training set and a test set
+        self.data_loaders = {}
+        self.data_loaders['train'], self.data_loaders['val'], num_genes_in = self.data_split()
 
-    # dataset_sizes = {
-    #     x: data_loaders[x].dataset.tensors[0].shape[0] for x in ['train', 'val']}
-    loss_train = {}
+        # """ prepare AutoEncoder model """
+        self.model = config['model'](
+            input_dim=num_genes_in,
+            latent_dim=config['num_genes_compressed'],
+            h_dims=config['h_dims'],
+            drop_out=config['dropout'],
+        )
+        self.model.to(self.device)
 
-    best_model_wts = copy.deepcopy(model.state_dict())
-    best_loss = np.inf
-    phases = ['val'] if eval else ['val', 'train']
-    for epoch in range(n_epochs):
-        print('Epoch {}/{}'.format(epoch, n_epochs - 1))
-        print('-' * 10)
+        self.loss_function = torch.nn.MSELoss()
+        self.best_loss = np.inf
+
+        """ optimizer and scheduler """
+        self.optimizer = optim.Adam(filter(lambda x: x.requires_grad, self.model.parameters()),
+                            config['lr'], betas=(0.9, 0.999), eps=1e-9)
+        self.scheduler = optim.lr_scheduler.StepLR(
+            self.optimizer, config['milestone'], gamma=config['lr_step'])
+
+        # """ number of parameters """
+        num_params = sum(p.numel()
+                        for p in self.model.parameters() if p.requires_grad)
+        print('[Info] Number of parameters: {}'.format(num_params))
+
+    def step(self):
+        metrics = {}
+        # print('Epoch {}/{}'.format(epoch, n_epochs - 1))
+        # print('-' * 10)
         # Each epoch has a training and validation phase
-        for phase in phases:
+        for phase in ['val','train']:
             if phase == 'train':
                 #optimizer = scheduler(optimizer, epoch)
-                model.train()  # Set model to training mode
+                self.model.train()  # Set model to training mode
             else:
-                model.eval()  # Set model to evaluate mode
+                self.model.eval()  # Set model to evaluate mode
 
             running_loss = []
 
@@ -502,50 +536,134 @@ def train_DAE_model(model, data_loaders={}, optimizer=None, loss_function=None, 
 
             # Iterate over data.
             # for data in data_loaders[phase]:
-            for batchidx, (x, meta, idx) in enumerate(data_loaders[phase]):
-
+            for batchidx, (x, meta, idx) in enumerate(self.data_loaders[phase]):
                 z = x
                 y = np.random.binomial(
-                    1, config["noise"], (z.shape[0], z.shape[1]))
+                    1, self.noise, (z.shape[0], z.shape[1]))
                 z[np.array(y, dtype=bool), ] = 0
                 x.requires_grad_(True)
                 # encode and decode
-                output, embeded = model(z)
+                output, embeded = self.model(z)
                 # compute loss
-                loss = loss_function(output, x)
+                loss = self.loss_function(output, x)
 
                 # zero the parameter (weight) gradients
-                optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
                 # backward + optimize only if in training phase
                 if phase == 'train':
                     loss.backward()
                     # update the weights
-                    optimizer.step()
+                    self.optimizer.step()
 
                 # print loss statistics
                 running_loss.append(loss.item())
-
             epoch_loss = np.mean(running_loss)
+            metrics[phase+'/'+"loss_mean"] = epoch_loss
 
             # print(epoch_loss)
             if phase == 'train':
-                scheduler.step()
+                self.scheduler.step()
 
-            last_lr = scheduler.optimizer.param_groups[0]['lr']
-            loss_train[epoch, phase] = epoch_loss
-            print('{} Loss: {:.8f}. Learning rate = {}'.format(
-                phase, epoch_loss, last_lr))
+            last_lr = self.scheduler.optimizer.param_groups[0]['lr']
+            metrics['current_lr'] = last_lr
+            # print('{} Loss: {:.8f}. Learning rate = {}'.format(
+            #     phase, epoch_loss, last_lr))
+            if phase == 'val' and epoch_loss < self.best_loss:
+                self.best_loss = epoch_loss
+                self.best_model_wts = copy.deepcopy(self.model.state_dict())
+        self.wandb.log(metrics)
+        return metrics
 
-            if phase == 'val' and epoch_loss < best_loss:
-                best_loss = epoch_loss
-                best_model_wts = copy.deepcopy(model.state_dict())
+    def data_split(self):
+        cell_features_train, cell_features_test = train_test_split(
+            self.cell_features, test_size=0.2, random_state=42)
+        cell_feature_train_dataset = CellGeneDataset(cell_features_train)
+        cell_fearute_train_dataloader = DataLoader(
+            cell_feature_train_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
+        cell_feature_test_dataset = CellGeneDataset(cell_features_test)
+        cell_fearute_test_dataloader = DataLoader(
+            cell_feature_test_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
+        num_genes_in = cell_feature_train_dataset.cell_features.shape[1]
+        return cell_fearute_train_dataloader, cell_fearute_test_dataloader, num_genes_in
 
-    # Select best model wts
-    if ~os.path.exists(save_path):
-        os.makedirs(save_path, exist_ok=True)
-        print("Warning: " ,save_path, " path not exist, creating path")
-    torch.save(best_model_wts, save_path+'AE')
-    model.load_state_dict(best_model_wts)
 
-    return model, loss_train
+# def train_DAE_model(model, data_loaders={}, optimizer=None, loss_function=None, n_epochs=100, scheduler=None, load=False, config={}, save_path="", eval=False):
+
+#     if (load != False):
+#         if (os.path.exists(save_path)):
+#             model.load_state_dict(torch.load(save_path))
+#             return model, 0
+#         else:
+#             print("Warning: Failed to load existing file, proceed to the trainning process.")
+
+#     # dataset_sizes = {
+#     #     x: data_loaders[x].dataset.tensors[0].shape[0] for x in ['train', 'val']}
+#     loss_train = {}
+
+#     best_model_wts = copy.deepcopy(model.state_dict())
+#     best_loss = np.inf
+#     phases = ['val'] if eval else ['val', 'train']
+#     for epoch in range(n_epochs):
+#         print('Epoch {}/{}'.format(epoch, n_epochs - 1))
+#         print('-' * 10)
+#         # Each epoch has a training and validation phase
+#         for phase in phases:
+#             if phase == 'train':
+#                 #optimizer = scheduler(optimizer, epoch)
+#                 model.train()  # Set model to training mode
+#             else:
+#                 model.eval()  # Set model to evaluate mode
+
+#             running_loss = []
+
+#             # n_iters = len(data_loaders[phase])
+
+#             # Iterate over data.
+#             # for data in data_loaders[phase]:
+#             for batchidx, (x, meta, idx) in enumerate(data_loaders[phase]):
+
+#                 z = x
+#                 y = np.random.binomial(
+#                     1, config["noise"], (z.shape[0], z.shape[1]))
+#                 z[np.array(y, dtype=bool), ] = 0
+#                 x.requires_grad_(True)
+#                 # encode and decode
+#                 output, embeded = model(z)
+#                 # compute loss
+#                 loss = loss_function(output, x)
+
+#                 # zero the parameter (weight) gradients
+#                 optimizer.zero_grad()
+
+#                 # backward + optimize only if in training phase
+#                 if phase == 'train':
+#                     loss.backward()
+#                     # update the weights
+#                     optimizer.step()
+
+#                 # print loss statistics
+#                 running_loss.append(loss.item())
+
+#             epoch_loss = np.mean(running_loss)
+
+#             # print(epoch_loss)
+#             if phase == 'train':
+#                 scheduler.step()
+
+#             last_lr = scheduler.optimizer.param_groups[0]['lr']
+#             loss_train[epoch, phase] = epoch_loss
+#             print('{} Loss: {:.8f}. Learning rate = {}'.format(
+#                 phase, epoch_loss, last_lr))
+
+#             if phase == 'val' and epoch_loss < best_loss:
+#                 best_loss = epoch_loss
+#                 best_model_wts = copy.deepcopy(model.state_dict())
+#     # Select best model wts
+#     if ~os.path.exists(save_path):
+#         os.makedirs(save_path, exist_ok=True)
+#         print("Warning: " ,save_path, " path not exist, creating path")
+#     torch.save(best_model_wts, save_path+'AE')
+#     model.load_state_dict(best_model_wts)
+
+#     return model, loss_train

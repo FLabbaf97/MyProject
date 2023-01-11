@@ -34,9 +34,9 @@ class ReLUModule(nn.ReLU):
 class Simple_AE(nn.Module):
     def __init__(self,
                  input_dim,
-                 latent_dim=128,
-                 h_dims=[512],
-                 drop_out=0.3):
+                 latent_dim,
+                 h_dims,
+                 drop_out):
 
         super(Simple_AE, self).__init__()
 
