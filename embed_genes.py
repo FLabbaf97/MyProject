@@ -132,12 +132,12 @@ def train(configuration, num_cpu='all'):
             name=configuration["name"],
             config=configuration["trainer_config"],
             stop=configuration["stop"],
-            # resources_per_trial=configuration["resources_per_trial"],
+            resources_per_trial=configuration["resources_per_trial"],
             local_dir=configuration["summaries_dir"],
-            checkpoint_freq=configuration.get("checkpoint_freq"),
-            checkpoint_at_end=configuration.get("checkpoint_at_end"),
-            checkpoint_score_attr=configuration.get("checkpoint_score_attr"),
-            keep_checkpoints_num=configuration.get("keep_checkpoints_num"),
+            # checkpoint_freq=configuration.get("checkpoint_freq"),
+            # checkpoint_at_end=configuration.get("checkpoint_at_end"),
+            # checkpoint_score_attr=configuration.get("checkpoint_score_attr"),
+            # keep_checkpoints_num=configuration.get("keep_checkpoints_num"),
             trial_dirname_creator=trial_dirname_creator,
         )
 

@@ -63,18 +63,18 @@ cell_autoencoder_config = {
 ########################################################################################################################
 
 configuration = {
-    'trainer':DAETrainer,
-    'trainer_config':{
-    **cell_autoencoder_config,
+    'trainer': DAETrainer,
+    'trainer_config': {
+        **cell_autoencoder_config,
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 300, 'patience': 10},
+    "stop": {"training_iteration": 300, "patience":10},
     # "checkpoint_score_attr": 'eval/comb_r_squared',
-    "keep_checkpoints_num": 1,
-    "checkpoint_at_end": False,
-    "checkpoint_freq": 1,
-    # "resources_per_trial": {"cpu": 8, "gpu": 0},
+    # "keep_checkpoints_num": 1,
+    # "checkpoint_at_end": False,
+    # "checkpoint_freq": 1,
+    "resources_per_trial": {"gpu": 1},
     "scheduler": None,
     "search_alg": None,
 }

@@ -28,9 +28,9 @@ datasets_path = "/Users/farzanehlabbaf/Documents/Drug Discovery/datasets/"
 cell_autoencoder_config = {
     "name":"AE_dummy",
     "model": Simple_AE,
-    "data_path": "data/processed/DepMap_expression_processed.csv",
+    "data_path": "/Users/farzanehlabbaf/Documents/Drug Discovery/models/MyProject/MyProject/data/processed/DepMap_expression_processed.csv",
     # "train_test_split": 'random',
-    "use_tune": False,
+    "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
     # "h_dims": tune.grid_search([
     #     [512],
@@ -41,8 +41,8 @@ cell_autoencoder_config = {
     # ]),
     'h_dims': [512],
     "num_epoches": 500,
-    # "seed": tune.grid_search([2, 3, 4]),
-    'seed':2,
+    "seed": tune.grid_search([2, 3, 4]),
+    # 'seed':2,
     # Optimizer config
     # "lr": tune.grid_search([1e-1, 1e-2, 1e-3, 1e-4]),
     'lr': 1e-2,
@@ -75,11 +75,11 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 300, 'patience': 10},
+    "stop": {"training_iteration": 300, "patience":10},
     # "checkpoint_score_attr": 'eval/comb_r_squared',
-    "keep_checkpoints_num": 1,
-    "checkpoint_at_end": False,
-    "checkpoint_freq": 1,
+    # "keep_checkpoints_num": 1,
+    # "checkpoint_at_end": False,
+    # "checkpoint_freq": 1,
     # "resources_per_trial": {"cpu": 8, "gpu": 0},
     "scheduler": None,
     "search_alg": None,

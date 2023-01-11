@@ -498,7 +498,7 @@ class DAETrainer(tune.Trainable):
         self.cell_features = pd.read_csv(self.data_path).set_index('cell_line_name')
         # Split the data into a training set and a test set
         self.data_loaders = {}
-        self.data_loaders['train'], self.data_loaders['val'], num_genes_in = self.data_split()
+        self.data_loaders['train'], self.data_loaders['eval'], num_genes_in = self.data_split()
 
         # """ prepare AutoEncoder model """
         self.model = config['model'](
@@ -511,6 +511,7 @@ class DAETrainer(tune.Trainable):
 
         self.loss_function = torch.nn.MSELoss()
         self.best_loss = np.inf
+        self.patience = 0
 
         """ optimizer and scheduler """
         self.optimizer = optim.Adam(filter(lambda x: x.requires_grad, self.model.parameters()),
@@ -579,7 +580,11 @@ class DAETrainer(tune.Trainable):
             #     phase, epoch_loss, last_lr))
             if phase == 'eval' and epoch_loss < self.best_loss:
                 self.best_loss = epoch_loss
+                self.patience = 0
                 self.best_model_wts = copy.deepcopy(self.model.state_dict())
+            elif phase == 'eval': 
+                self.patience+=1
+        metrics['patience'] = self.patience
         if self.wandb:
             self.wandb.log(metrics)
         return metrics
