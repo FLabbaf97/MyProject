@@ -261,6 +261,7 @@ class ActiveTrainer(BasicTrainer):
     def setup(self, config, wandb=True):
         print("Initializing active training pipeline")
         super(ActiveTrainer, self).setup(config,wandb=False)
+        self.wandb=False
         if wandb and config['use_tune']:
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
@@ -379,7 +380,8 @@ class ActiveTrainer(BasicTrainer):
         metrics["training_iteration"] = self.training_it
         metrics["all_space_explored"] = 0
         self.training_it += 1
-        self.wandb.log(metrics)
+        if self.wandb:
+            self.wandb.log(metrics)
 
         return metrics
 
@@ -483,6 +485,7 @@ class DAETrainer(tune.Trainable):
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.batch_size = config["batch_size"]
         self.noise = config['noise']
+        self.training_it=0
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(device_type)
         self.training_it = 0
@@ -525,7 +528,7 @@ class DAETrainer(tune.Trainable):
         # print('Epoch {}/{}'.format(epoch, n_epochs - 1))
         # print('-' * 10)
         # Each epoch has a training and validation phase
-        for phase in ['val','train']:
+        for phase in ['eval','train']:
             if phase == 'train':
                 #optimizer = scheduler(optimizer, epoch)
                 self.model.train()  # Set model to training mode
@@ -566,12 +569,15 @@ class DAETrainer(tune.Trainable):
             # print(epoch_loss)
             if phase == 'train':
                 self.scheduler.step()
+                metrics["training_iteration"] = self.training_it
+                self.training_it += 1
+
 
             last_lr = self.scheduler.optimizer.param_groups[0]['lr']
             metrics['current_lr'] = last_lr
             # print('{} Loss: {:.8f}. Learning rate = {}'.format(
             #     phase, epoch_loss, last_lr))
-            if phase == 'val' and epoch_loss < self.best_loss:
+            if phase == 'eval' and epoch_loss < self.best_loss:
                 self.best_loss = epoch_loss
                 self.best_model_wts = copy.deepcopy(self.model.state_dict())
         if self.wandb:
