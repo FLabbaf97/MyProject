@@ -27,7 +27,7 @@ datasets_path = "/Users/farzanehlabbaf/Documents/Drug Discovery/datasets/"
 ########################################################################################################################
 
 cell_autoencoder_config = {
-    "name":"AE_dummy",
+    "name": "AE_farzaneh",
     "model": Simple_AE,
     "data_path": "data/processed/DepMap_expression_processed.csv",
     # "train_test_split": 'random',

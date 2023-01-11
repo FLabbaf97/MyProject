@@ -112,7 +112,7 @@ class BasicTrainer(tune.Trainable):
     def setup(self, config, wandb=True):
         print("Initializing regular training pipeline")
         self.is_wandb = wandb
-        if wandb:
+        if wandb and config['use_tune']:
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.batch_size = config["batch_size"]
@@ -261,7 +261,7 @@ class ActiveTrainer(BasicTrainer):
     def setup(self, config, wandb=True):
         print("Initializing active training pipeline")
         super(ActiveTrainer, self).setup(config,wandb=False)
-        if wandb:
+        if wandb and config['use_tune']:
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.acquire_n_at_a_time = config["acquire_n_at_a_time"]
@@ -477,8 +477,10 @@ class ActiveTrainer(BasicTrainer):
 class DAETrainer(tune.Trainable):
     def setup(self, config):
         save_path = 'saved/'
-        self.wandb = setup_wandb(
-            config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
+        self.wandb = False
+        if config['use_tune']:
+            self.wandb = setup_wandb(
+                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.batch_size = config["batch_size"]
         self.noise = config['noise']
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
@@ -572,7 +574,8 @@ class DAETrainer(tune.Trainable):
             if phase == 'val' and epoch_loss < self.best_loss:
                 self.best_loss = epoch_loss
                 self.best_model_wts = copy.deepcopy(self.model.state_dict())
-        self.wandb.log(metrics)
+        if self.wandb:
+            self.wandb.log(metrics)
         return metrics
 
     def data_split(self):
