@@ -529,7 +529,7 @@ class DAETrainer(tune.Trainable):
         # print('Epoch {}/{}'.format(epoch, n_epochs - 1))
         # print('-' * 10)
         # Each epoch has a training and validation phase
-        for phase in ['eval','train']:
+        for phase in ['train','eval']:
             if phase == 'train':
                 #optimizer = scheduler(optimizer, epoch)
                 self.model.train()  # Set model to training mode
