@@ -36,7 +36,8 @@ class Simple_AE(nn.Module):
                  input_dim,
                  latent_dim,
                  h_dims,
-                 drop_out):
+                 drop_out,
+                 batch_norm):
 
         super(Simple_AE, self).__init__()
 
@@ -52,13 +53,22 @@ class Simple_AE(nn.Module):
             i_dim = hidden_dims[i-1]
             o_dim = hidden_dims[i]
 
-            modules.append(
-                nn.Sequential(
-                    nn.Linear(i_dim, o_dim),
-                    nn.BatchNorm1d(o_dim),
-                    #nn.ReLU(),
-                    nn.Dropout(drop_out))
-            )
+            if(batch_norm):
+                modules.append(
+                    nn.Sequential(
+                        nn.Linear(i_dim, o_dim),
+                        nn.BatchNorm1d(o_dim),
+                        #nn.ReLU(),
+                        nn.Dropout(drop_out))
+                )
+            else: 
+                modules.append(
+                    nn.Sequential(
+                        nn.Linear(i_dim, o_dim),
+                        # nn.BatchNorm1d(o_dim),
+                        #nn.ReLU(),
+                        nn.Dropout(drop_out))
+                )
             #in_channels = h_dim
 
         self.encoder = nn.Sequential(*modules)

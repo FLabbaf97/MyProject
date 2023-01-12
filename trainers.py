@@ -506,6 +506,7 @@ class DAETrainer(tune.Trainable):
             latent_dim=config['num_genes_compressed'],
             h_dims=config['h_dims'],
             drop_out=config['dropout'],
+            batch_norm=config['batch_norm']
         )
         self.model.to(self.device)
 
@@ -526,66 +527,76 @@ class DAETrainer(tune.Trainable):
 
     def step(self):
         metrics = {}
-        # print('Epoch {}/{}'.format(epoch, n_epochs - 1))
-        # print('-' * 10)
-        # Each epoch has a training and validation phase
-        for phase in ['train','eval']:
-            if phase == 'train':
-                #optimizer = scheduler(optimizer, epoch)
-                self.model.train()  # Set model to training mode
-            else:
-                self.model.eval()  # Set model to evaluate mode
 
-            running_loss = []
-
-            # n_iters = len(data_loaders[phase])
-
-            # Iterate over data.
-            # for data in data_loaders[phase]:
-            for batchidx, (x, meta, idx) in enumerate(self.data_loaders[phase]):
-                x = x.to(self.device)
-                z = x
+        # Train epoch:
+        self.model.train()  # Set model to training mode
+        running_loss = []
+        for batchidx, (x, meta, idx) in enumerate(self.data_loaders['train']):
+            x = x.to(self.device)
+            z = x
+            # add noise
+            if(self.noise != 0):
                 y = np.random.binomial(
                     1, self.noise, (z.shape[0], z.shape[1]))
                 z[np.array(y, dtype=bool), ] = 0
-                x.requires_grad_(True)
-                # encode and decode
-                output, embeded = self.model(z)
-                # compute loss
-                loss = self.loss_function(output, x)
+            x.requires_grad_(True)
+            # encode and decode
+            output, embeded = self.model(z)
+            # compute loss
+            loss = self.loss_function(output, x)
 
-                # zero the parameter (weight) gradients
-                self.optimizer.zero_grad()
+            # zero the parameter (weight) gradients
+            self.optimizer.zero_grad()
 
-                # backward + optimize only if in training phase
-                if phase == 'train':
-                    loss.backward()
-                    # update the weights
-                    self.optimizer.step()
+            # backward + optimize only if in training phase
+            loss.backward()
+            # update the weights
+            self.optimizer.step()
 
-                # print loss statistics
-                running_loss.append(loss.item())
-            epoch_loss = np.mean(running_loss)
-            metrics[phase+'/'+"loss_mean"] = epoch_loss
+            # print loss statistics
+            running_loss.append(loss.item())
+        epoch_loss = np.mean(running_loss)
+        metrics['train/'+"loss_mean"] = epoch_loss
 
             # print(epoch_loss)
-            if phase == 'train':
-                self.scheduler.step()
-                metrics["training_iteration"] = self.training_it
-                self.training_it += 1
+        self.scheduler.step()
+        metrics["training_iteration"] = self.training_it
+        self.training_it += 1
+        last_lr = self.scheduler.optimizer.param_groups[0]['lr']
+        metrics['current_lr'] = last_lr
+        
+        ####
+        #eval epoch
+        self.model.eval()  # Set model to training mode
+        running_loss = []
+        for batchidx, (x, meta, idx) in enumerate(self.data_loaders['eval']):
+            x = x.to(self.device)
+            z = x
+            # add noise
+            if (self.noise != 0):
+                y = np.random.binomial(
+                    1, self.noise, (z.shape[0], z.shape[1]))
+                z[np.array(y, dtype=bool), ] = 0
+            x.requires_grad_(False)
+            # encode and decode
+            output, embeded = self.model(z)
+            # compute loss
+            loss = self.loss_function(output, x)
 
-
-            last_lr = self.scheduler.optimizer.param_groups[0]['lr']
-            metrics['current_lr'] = last_lr
-            # print('{} Loss: {:.8f}. Learning rate = {}'.format(
-            #     phase, epoch_loss, last_lr))
-            if phase == 'eval' and epoch_loss < self.best_loss:
-                self.best_loss = epoch_loss
-                self.patience = 0
-                self.best_model_wts = copy.deepcopy(self.model.state_dict())
-            elif phase == 'eval': 
-                self.patience+=1
-        metrics['patience'] = self.patience
+            # zero the parameter (weight) gradients
+            self.optimizer.zero_grad()
+            # print loss statistics
+            running_loss.append(loss.item())
+        epoch_loss = np.mean(running_loss)
+        metrics['eval/'+"loss_mean"] = epoch_loss
+        if epoch_loss < self.best_loss:
+            self.best_loss = epoch_loss
+            self.patience = 0
+            self.best_model_wts = copy.deepcopy(self.model.state_dict())
+        else:
+            self.patience+=1
+        metrics['eval/best_loss']= self.best_loss
+        # report metrics
         if self.wandb:
             self.wandb.log(metrics)
         return metrics
