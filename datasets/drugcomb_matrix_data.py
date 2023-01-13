@@ -99,6 +99,7 @@ class DrugCombMatrix:
             study_name="ALMANAC",
             in_house_data="without",
             rounds_to_include=(),
+            duplicate_data=False,
             AE_config={},
     ):
         self.fp_bits = fp_bits
@@ -107,6 +108,7 @@ class DrugCombMatrix:
         self.study_name = study_name
         self.rounds_to_include = list(rounds_to_include)
         self.name = 'DrugCombMatrix'
+        self.duplicate_data = duplicate_data
 
         assert in_house_data in ["with", "without", "in_house_only"]
         self.in_house_data = in_house_data
@@ -162,7 +164,8 @@ class DrugCombMatrix:
                     self.data[attr] = self.data[attr][:, ixs]
                 elif attr.startswith("ddi_edge_"):
                     self.data[attr] = self.data[attr][ixs]
-
+        if(self.duplicate_data):
+            self.duplicate()
         print("Dataset loaded.")
         print(
             self.data.ddi_edge_idx.shape[1],
@@ -187,6 +190,16 @@ class DrugCombMatrix:
                          str(self.rounds_to_include)
 
         return proc_file_name
+
+    def duplicate(self):
+        self.data.ddi_edge_bliss_av = self.data.ddi_edge_bliss_av.repeat(2)
+        self.data.ddi_edge_bliss_max = self.data.ddi_edge_bliss_max.repeat(2)
+        self.data.ddi_edge_classes = self.data.ddi_edge_classes.repeat(2)
+        self.data.ddi_edge_css_av = self.data.ddi_edge_css_av.repeat(2)
+        self.data.ddi_edge_in_house = self.data.ddi_edge_in_house.repeat(2)
+        self.data_max_index = self.data.ddi_edge_idx.shape[1]
+
+        return
 
     def get_blocks(self):
         blocks = rsv.get_specific_drug_combo_blocks(
@@ -552,10 +565,16 @@ class DrugCombMatrix:
                 [edge_to_split_dict[tuple(edge.tolist())] for edge in self.data.ddi_edge_idx.T]
             )
 
-            # Get train/valid/test indices for all (non unique) edges
-            train_idx = np.where(all_edges_split == 0)[0]
-            valid_idx = np.where(all_edges_split == 1)[0]
-            test_idx = np.where(all_edges_split == 2)[0]
+        # Get train/valid/test indices for all (non unique) edges
+        train_idx = np.where(all_edges_split == 0)[0]
+        valid_idx = np.where(all_edges_split == 1)[0]
+        test_idx = np.where(all_edges_split == 2)[0]
+        if self.duplicate_data:
+            # add compliment of edges to idx and train, val, test idx
+            train_idx = np.concatenate((train_idx,train_idx+self.data_max_index))
+            valid_idx = np.concatenate((valid_idx, valid_idx+self.data_max_index))
+            test_idx = np.concatenate((test_idx,test_idx+self.data_max_index))
+            self.data.ddi_edge_idx = self.data.ddi_edge_idx.repeat(1,2)
 
         # Shuffle the order within each split
         np.random.shuffle(train_idx)
@@ -575,7 +594,8 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder = Simple_AE(input_dim=AE_config['input_dim'],
                                  latent_dim=AE_config['latent_dim'],
                                  h_dims=AE_config['h_dims'],
-                                 drop_out=AE_config['drop_out'])
+                                 drop_out=AE_config['drop_out'],
+                                 batch_norm=True)
         self.encoder.load_state_dict(torch.load(os.path.join(get_project_root(), AE_config['encoder_path'])))
         self.encoder.eval()
         self.cell_data_file = AE_config['data']

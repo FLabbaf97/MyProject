@@ -89,7 +89,8 @@ dataset_config = {
     "cell_lines_in_test": None,  # ['MCF7', 'PC-3'],
     "target": "bliss_max",
     "fp_bits": 1024,
-    "fp_radius": 2
+    "fp_radius": 2,
+    'duplicate_data': False,
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",

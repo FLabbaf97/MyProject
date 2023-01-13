@@ -1,26 +1,24 @@
 
+from ray import tune
+from trainers import train_epoch, eval_epoch, BasicTrainer
+from utils import get_project_root
+from models import MyMLPPredictor
+from models import MyBaseline
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
 import sys
 import os
- 
+
 # getting the name of the directory
 # where the this file is present.
 current = os.path.dirname(os.path.realpath(__file__))
- 
+
 # Getting the parent directory name
 # where the current directory is present.
 parent = os.path.dirname(current)
- 
+
 # adding the parent directory to
 # the sys.path.
 sys.path.append(parent)
-
-from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
-from models import MyBaseline
-from models import MyMLPPredictor
-from utils import get_project_root
-from trainers import train_epoch, eval_epoch, BasicTrainer
-import os
-from ray import tune
 
 
 ########################################################################################################################
@@ -31,27 +29,22 @@ from ray import tune
 pipeline_config = {
     "use_tune": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([2,3]),
+    "seed": tune.grid_search([2, 3, 4]),
     # "seed": 2,
     # Optimizer config
-    # "lr": 1e-2,
-    "lr": tune.grid_search([1e-2,1e-3]),
+    "lr": 1e-2,
+    # "lr": tune.grid_search([1e-2, 1e-3]),
     "weight_decay": 1e-2,
     # "weight_decay": tune.choice([1e-1,1e-2,1e-3,1e-4]),
     "batch_size": 256,
     # "batch_size": tune.grid_search([512,256,128]),
-    'lr_step': tune.grid_search([5e-1,1e-1]),
-    'milestones': tune.grid_search([
-        [8,16,32,64,128,256,512],
-        [10,20,30,40,50,60,70,80,90,100,110,120,130,140,150,160,170,180,190],
-        [10,30,60,90,120,150,180,210],
-        [10,20,30,40,50,70,90,110,150,190]
-        ]),
+    'lr_step': 5e-1,
+    'milestones': [10,20,30,50,70],
     # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'baseline_lr_scheduler'
+    "wandb_group": 'checking double data'
 }
 
 predictor_config = {
@@ -62,13 +55,13 @@ predictor_config = {
             64,
             1,
         ],
-    "predictor_layers": 
+    "predictor_layers":
     [
         128,
         64,
         1,
-    ],
-    "drug_embed_hidden_layers":[512,],
+            ],
+    "drug_embed_hidden_layers": [512, ],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
@@ -80,9 +73,9 @@ autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",
     'load_ae': True,
     'ae_path': 'saved/depMap_config/AE',
-    'input_dim' : 15909,
-    'latent_dim' : 128,
-    'h_dims' : [512],
+    'input_dim': 15909,
+    'latent_dim': 128,
+    'h_dims': [512],
     'drop_out': 0.2,
 }
 
@@ -106,8 +99,7 @@ dataset_config = {
     "target": "bliss_max",
     "fp_bits": 1024,
     "fp_radius": 2,
-    'duplicate_data': False,
-
+    'duplicate_data': tune.grid_search(True,False)
 }
 
 ########################################################################################################################

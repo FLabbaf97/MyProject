@@ -94,7 +94,8 @@ dataset_config = {
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
     "target": "bliss_max",
     "fp_bits": 1024,
-    "fp_radius": 2
+    "fp_radius": 2,
+    'duplicate_data': False,
 }
 
 active_learning_config = {
