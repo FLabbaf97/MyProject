@@ -52,7 +52,7 @@ def train_epoch(data, loader, model, optim, scheduler=None):
         epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
     else:
         epoch_comb_r_squared = -1
-    epoch_pearson_r = pearsonr(all_targets, all_mean_preds)
+    epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
     summary_dict = {
         "loss_mean": epoch_loss / num_batches,
         "comb_r_squared": epoch_comb_r_squared,
