@@ -99,7 +99,7 @@ dataset_config = {
     "target": "bliss_max",
     "fp_bits": 1024,
     "fp_radius": 2,
-    'duplicate_data': tune.grid_search(True,False)
+    'duplicate_data': tune.grid_search([True,False])
 }
 
 ########################################################################################################################
