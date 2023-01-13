@@ -111,10 +111,12 @@ def eval_epoch(data, loader, model):
 class BasicTrainer(tune.Trainable):
     def setup(self, config, wandb=True):
         print("Initializing regular training pipeline")
-        self.is_wandb = wandb
         if wandb and config['use_tune']:
+            self.wandb = True
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
+        else:
+            self.wandb = False
         self.batch_size = config["batch_size"]
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         # device_type = 'mps'
