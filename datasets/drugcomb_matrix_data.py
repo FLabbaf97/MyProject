@@ -514,7 +514,7 @@ class DrugCombMatrix:
                 all_edges_split = np.array(all_edges_split)
 
                 # Discard edges that are already in the test
-                all_edges_split[test_idx] = -1
+                all_edges_split[test_idx] = 2
 
                 # Get train/valid indices for all (non unique) edges
                 train_idx = np.where(all_edges_split == 0)[0]
@@ -569,7 +569,7 @@ class DrugCombMatrix:
         # Get train/valid/test indices for all (non unique) edges
         train_idx = np.where(all_edges_split == 0)[0]
         valid_idx = np.where(all_edges_split == 1)[0]
-        test_idx = np.where(all_edges_split == 2)[0]
+        # test_idx = np.where(all_edges_split == 2)[0]
         if self.duplicate_data:
             self.duplicate()
             # add compliment of edges to idx and train, val, test idx

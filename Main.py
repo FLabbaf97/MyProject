@@ -20,7 +20,7 @@ def train(configuration, num_cpu='all'):
         if num_cpu=='all':
             ray.init()
         else:
-            ray.init(num_cpus=int(num_cpu))
+            ray.init(num_cpus=int(num_cpu), num_gpus=1)
 
         time_to_sleep = 5
         print("Sleeping for %d seconds" % time_to_sleep)

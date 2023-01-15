@@ -174,8 +174,17 @@ class BasicTrainer(tune.Trainable):
 
         self.valid_loader = DataLoader(
             valid_ddi_dataset,
-            batch_size=config["batch_size"]
+            batch_size=1024
         )
+
+        # Test loader
+        test_ddi_dataset = get_tensor_dataset(self.data, self.test_idxs)
+
+        self.test_loader = DataLoader(
+            test_ddi_dataset,
+            batch_size=1024
+        )
+
 
         # Initialize model
         self.model = config["model"](self.data, config)
@@ -223,9 +232,16 @@ class BasicTrainer(tune.Trainable):
             self.scheduler,
         )
 
+        test_metrics, _ = self.eval_epoch(
+            self.data, self.test_loader, self.model)
+
+
+
         eval_metrics = [("eval/" + k, v) for k, v in eval_metrics.items()]
         train_metrics = [("train/" + k, v) for k, v in train_metrics.items()]
-        metrics = dict(train_metrics + eval_metrics)
+        test_metrics = [("test/" + k, v) for k, v in test_metrics.items()]
+
+        metrics = dict(train_metrics + eval_metrics + test_metrics)
 
         metrics["training_iteration"] = self.training_it
         self.training_it += 1
@@ -244,7 +260,7 @@ class BasicTrainer(tune.Trainable):
         metrics['all_space_explored'] = 0
         if self.is_wandb:
             self.wandb.log(metrics)
-
+        
         return metrics
 
     def save_checkpoint(self, checkpoint_dir):
