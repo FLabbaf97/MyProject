@@ -198,7 +198,7 @@ class DrugCombMatrix:
         self.data.ddi_edge_css_av = self.data.ddi_edge_css_av.repeat(2)
         self.data.ddi_edge_in_house = self.data.ddi_edge_in_house.repeat(2)
         self.data_max_index = self.data.ddi_edge_idx.shape[1]
-        self.ddi_edge_response = self.data.ddi_edge_responsse.repeat(2)
+        # self.ddi_edge_response = self.data.ddi_edge_responsse.repeat(2)
         self.data.ddi_edge_idx = self.data.ddi_edge_idx.repeat(1,2)
         return
 
