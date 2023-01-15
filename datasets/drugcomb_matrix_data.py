@@ -590,7 +590,7 @@ class DrugCombMatrix:
 # Dataset objects where cell-line features are from an autoencoder
 ########################################################################################################################
 class DrugCombMatrixWithAE(DrugCombMatrix):
-    def __init__(self, fp_bits=1024, fp_radius=4, cell_line=None, study_name="ALMANAC", in_house_data="without", rounds_to_include=(), AE_config={}):
+    def __init__(self, fp_bits=1024, fp_radius=4, cell_line=None, study_name="ALMANAC", in_house_data="without", rounds_to_include=(),            duplicate_data=False, AE_config={}):
         self.encoder = Simple_AE(input_dim=AE_config['input_dim'],
                                  latent_dim=AE_config['latent_dim'],
                                  h_dims=AE_config['h_dims'],
