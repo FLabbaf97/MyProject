@@ -47,7 +47,7 @@ pipeline_config = {
     #     [10, 30, 60, 90, 120, 150, 180, 210],
     #     [10, 20, 30, 40, 50, 70, 90, 110, 150, 190]
     # ]),
-    "milestones": [10, 20, 30, 50, 70, 90, 120, 150,180],
+    "milestones": [10, 20, 30, 40, 50, 70, 90, 120, 150,180],
     # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
@@ -101,7 +101,7 @@ dataset_config = {
     "val_set_prop": 0.2,
     "test_set_prop": 0.1,
     "test_on_unseen_cell_line": True,
-    "cell_lines_in_test": ['MCF7',],
+    "cell_lines_in_test": tune.grid_search(['MCF7', 'NCIH23', 'HCT116'], ['MCF7',], ['HCT116'], ['NCIH23']),
     "split_valid_train": "pair_level",
     "cell_line": None,  # 'PC-3',
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
@@ -126,7 +126,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 500, 'patience': 10},
+    "stop": {"training_iteration": 500, 'patience': 30},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,
