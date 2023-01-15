@@ -590,7 +590,7 @@ class DrugCombMatrix:
 # Dataset objects where cell-line features are from an autoencoder
 ########################################################################################################################
 class DrugCombMatrixWithAE(DrugCombMatrix):
-    def __init__(self, fp_bits=1024, fp_radius=4, cell_line=None, study_name="ALMANAC", in_house_data="without", rounds_to_include=(),            duplicate_data=False, AE_config={}):
+    def __init__(self, fp_bits=1024, fp_radius=4, cell_line=None, study_name="ALMANAC", in_house_data="without", rounds_to_include=(),duplicate_data=False, AE_config={}):
         self.encoder = Simple_AE(input_dim=AE_config['input_dim'],
                                  latent_dim=AE_config['latent_dim'],
                                  h_dims=AE_config['h_dims'],
@@ -599,7 +599,7 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.load_state_dict(torch.load(os.path.join(get_project_root(), AE_config['encoder_path'])))
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
-        super().__init__(fp_bits, fp_radius, cell_line, study_name, in_house_data, rounds_to_include, AE_config)
+        super().__init__(fp_bits, fp_radius, cell_line, study_name, in_house_data, rounds_to_include, AE_config,duplicate_data=duplicate_data)
 
 
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
