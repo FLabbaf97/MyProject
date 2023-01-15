@@ -88,7 +88,7 @@ def eval_epoch(data, loader, model):
         epoch_comb_r_squared = stats.linregress(
             all_mean_preds, all_targets).rvalue**2
         epoch_spear = spearmanr(all_targets, all_mean_preds).correlation
-        epoch_pearson_r = pearsonr(all_targets, all_mean_preds)
+        epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
     summary_dict = {
         "loss_mean": epoch_loss / num_batches,
         "comb_r_squared": epoch_comb_r_squared,
@@ -102,7 +102,10 @@ def eval_epoch(data, loader, model):
 
     return summary_dict, all_out
 
-
+def calculate_pair_distance(out):
+    # This function supposed to calculate pain distance of a drug pair and their complement.
+    # TODO: feel this part
+    return
 ########################################################################################################################
 # Basic trainer
 ########################################################################################################################
@@ -135,7 +138,8 @@ class BasicTrainer(tune.Trainable):
             study_name=config["study_name"],
             in_house_data=config["in_house_data"],
             rounds_to_include=config["rounds_to_include"],
-            AE_config=AE_config
+            AE_config=AE_config,
+            duplicate_data=config['duplicate_data']
         )
 
         self.data = dataset.data.to(self.device)
