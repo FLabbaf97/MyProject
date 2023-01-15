@@ -599,7 +599,8 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.load_state_dict(torch.load(os.path.join(get_project_root(), AE_config['encoder_path'])))
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
-        super().__init__(fp_bits, fp_radius, cell_line, study_name, in_house_data, rounds_to_include, AE_config,duplicate_data=duplicate_data)
+        super().__init__(fp_bits, fp_radius, cell_line, study_name,
+                         in_house_data, rounds_to_include, duplicate_data, AE_config)
 
 
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
