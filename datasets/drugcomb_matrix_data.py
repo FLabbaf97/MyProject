@@ -164,8 +164,8 @@ class DrugCombMatrix:
                     self.data[attr] = self.data[attr][:, ixs]
                 elif attr.startswith("ddi_edge_"):
                     self.data[attr] = self.data[attr][ixs]
-        if(self.duplicate_data):
-            self.duplicate()
+        # if(self.duplicate_data):
+        #     self.duplicate()
         print("Dataset loaded.")
         print(
             self.data.ddi_edge_idx.shape[1],
@@ -198,7 +198,8 @@ class DrugCombMatrix:
         self.data.ddi_edge_css_av = self.data.ddi_edge_css_av.repeat(2)
         self.data.ddi_edge_in_house = self.data.ddi_edge_in_house.repeat(2)
         self.data_max_index = self.data.ddi_edge_idx.shape[1]
-
+        self.ddi_edge_response = self.data.ddi_edge_responsse.repeat(2)
+        self.data.ddi_edge_idx = self.data.ddi_edge_idx.repeat(1,2)
         return
 
     def get_blocks(self):
@@ -570,11 +571,11 @@ class DrugCombMatrix:
         valid_idx = np.where(all_edges_split == 1)[0]
         test_idx = np.where(all_edges_split == 2)[0]
         if self.duplicate_data:
+            self.duplicate()
             # add compliment of edges to idx and train, val, test idx
             train_idx = np.concatenate((train_idx,train_idx+self.data_max_index))
             valid_idx = np.concatenate((valid_idx, valid_idx+self.data_max_index))
             test_idx = np.concatenate((test_idx,test_idx+self.data_max_index))
-            self.data.ddi_edge_idx = self.data.ddi_edge_idx.repeat(1,2)
 
         # Shuffle the order within each split
         np.random.shuffle(train_idx)

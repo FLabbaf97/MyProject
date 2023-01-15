@@ -138,12 +138,16 @@ class BasicTrainer(tune.Trainable):
             study_name=config["study_name"],
             in_house_data=config["in_house_data"],
             rounds_to_include=config["rounds_to_include"],
+            duplicate_data=config['duplicate_data'],
             AE_config=AE_config,
-            duplicate_data=config['duplicate_data']
         )
 
-        self.data = dataset.data.to(self.device)
 
+        # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
+        self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config) # duplication happen here
+
+        self.data = dataset.data.to(self.device)
+        
         # If a score is the target, we store it in the ddi_edge_response attribute of the data object
         if "target" in config.keys():
             possible_target_dicts = {
@@ -156,8 +160,6 @@ class BasicTrainer(tune.Trainable):
         torch.manual_seed(config["seed"])
         np.random.seed(config["seed"])
 
-        # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
-        self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config)
 
         # Train loader
         train_ddi_dataset = get_tensor_dataset(self.data, self.train_idxs)
