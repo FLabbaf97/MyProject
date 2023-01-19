@@ -127,20 +127,20 @@ def train(configuration, num_cpu='all'):
         time.sleep(time_to_sleep)
         print("Woke up.. Scheduling")
 
-        tune.run(
+        tuner = tune.run(
             configuration["trainer"],
             name=configuration["name"],
             config=configuration["trainer_config"],
             stop=configuration["stop"],
             # resources_per_trial=configuration["resources_per_trial"],
             local_dir=configuration["summaries_dir"],
-            # checkpoint_freq=configuration.get("checkpoint_freq"),
-            # checkpoint_at_end=configuration.get("checkpoint_at_end"),
-            # checkpoint_score_attr=configuration.get("checkpoint_score_attr"),
-            # keep_checkpoints_num=configuration.get("keep_checkpoints_num"),
+            checkpoint_freq=configuration.get("checkpoint_freq"),
+            checkpoint_at_end=configuration.get("checkpoint_at_end"),
+            checkpoint_score_attr=configuration.get("checkpoint_score_attr"),
+            keep_checkpoints_num=configuration.get("keep_checkpoints_num"),
             trial_dirname_creator=trial_dirname_creator,
         )
-
+        print('dkjfha')
     else:
         ###########################################
         # Do not use tune
@@ -151,6 +151,9 @@ def train(configuration, num_cpu='all'):
         for i in range(configuration["trainer_config"]["num_epoch_without_tune"]):
             print("epoch ", i)
             trainer.train()
+        # save model
+        trainer.save_best_model()
+    
 
 
 if __name__ == "__main__":

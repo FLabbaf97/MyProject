@@ -504,8 +504,8 @@ class ActiveTrainer(BasicTrainer):
 class DAETrainer(tune.Trainable):
     def setup(self, config):
         save_path = 'saved/'
-        self.wandb = False
-        if config['use_tune']:
+        self.is_wandb = (config['is_wandb'] and config['use_tune'])
+        if config['use_tune'] and self.is_wandb:
             self.wandb = setup_wandb(
                 config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
         self.batch_size = config["batch_size"]
@@ -514,7 +514,7 @@ class DAETrainer(tune.Trainable):
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(device_type)
         self.training_it = 0
-        self.save_path = save_path+config["name"]+"/"
+        self.save_path = save_path+config["name"]+str(config['num_genes_compressed'])+"/"
         if ~os.path.exists(self.save_path):
             os.makedirs(self.save_path, exist_ok=True)
         self.data_path = config['data_path']
@@ -552,8 +552,9 @@ class DAETrainer(tune.Trainable):
 
     def step(self):
         metrics = {}
-
+        #######################################
         # Train epoch:
+        #######################################
         self.model.train()  # Set model to training mode
         running_loss = []
         for batchidx, (x, meta, idx) in enumerate(self.data_loaders['train']):
@@ -564,7 +565,7 @@ class DAETrainer(tune.Trainable):
                 y = np.random.binomial(
                     1, self.noise, (z.shape[0], z.shape[1]))
                 z[np.array(y, dtype=bool), ] = 0
-            x.requires_grad_(True)
+            # x.requires_grad_(True)
             # encode and decode
             output, embeded = self.model(z)
             # compute loss
@@ -578,42 +579,43 @@ class DAETrainer(tune.Trainable):
             # update the weights
             self.optimizer.step()
 
-            # print loss statistics
             running_loss.append(loss.item())
         epoch_loss = np.mean(running_loss)
         metrics['train/'+"loss_mean"] = epoch_loss
-
-            # print(epoch_loss)
         self.scheduler.step()
         metrics["training_iteration"] = self.training_it
         self.training_it += 1
         last_lr = self.scheduler.optimizer.param_groups[0]['lr']
         metrics['current_lr'] = last_lr
         
-        ####
+        #######################################
         #eval epoch
+        #######################################
         self.model.eval()  # Set model to training mode
+        all_input = []
+        all_output = []
         running_loss = []
-        for batchidx, (x, meta, idx) in enumerate(self.data_loaders['eval']):
-            x = x.to(self.device)
-            z = x
-            # add noise
-            if (self.noise != 0):
-                y = np.random.binomial(
-                    1, self.noise, (z.shape[0], z.shape[1]))
-                z[np.array(y, dtype=bool), ] = 0
-            x.requires_grad_(False)
-            # encode and decode
-            output, embeded = self.model(z)
-            # compute loss
-            loss = self.loss_function(output, x)
-
-            # zero the parameter (weight) gradients
-            self.optimizer.zero_grad()
-            # print loss statistics
-            running_loss.append(loss.item())
+        with torch.no_grad()""
+            for batchidx, (x, meta, idx) in enumerate(self.data_loaders['eval']):
+                x = x.to(self.device)
+                # x.requires_grad_(False)
+                # encode and decode
+                output, embeded = self.model(x)
+                # compute loss
+                loss = self.loss_function(output, x)
+                all_input.extend(x.tolist())
+                all_output.extend(output.tolist())
+                # zero the parameter (weight) gradients
+                self.optimizer.zero_grad()
+                running_loss.append(loss.item())
         epoch_loss = np.mean(running_loss)
+        epoch_pearson_r = []
+        for i in range(len(all_input)):
+            epoch_pearson_r.append(pearsonr(all_input[i], all_output[i]).statistic)
+        avg_pearson = np.mean(epoch_pearson_r)
         metrics['eval/'+"loss_mean"] = epoch_loss
+        metrics['eval/'+"pearson_r"] = avg_pearson
+
         if epoch_loss < self.best_loss:
             self.best_loss = epoch_loss
             self.patience = 0
@@ -621,8 +623,9 @@ class DAETrainer(tune.Trainable):
         else:
             self.patience+=1
         metrics['eval/best_loss']= self.best_loss
+        metrics['patience'] = self.patience
         # report metrics
-        if self.wandb:
+        if self.is_wandb:
             self.wandb.log(metrics)
         return metrics
 
@@ -637,6 +640,26 @@ class DAETrainer(tune.Trainable):
             cell_feature_test_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
         num_genes_in = cell_feature_train_dataset.cell_features.shape[1]
         return cell_fearute_train_dataloader, cell_fearute_test_dataloader, num_genes_in
+    
+    def save_checkpoint(self, checkpoint_dir):
+        print("======================== in save checkpoit ======================================")
+        checkpoint_path = os.path.join(checkpoint_dir, "model.pth")
+        torch.save(self.model.state_dict(), checkpoint_path)
+        if ~os.path.exists(self.save_path):
+            os.makedirs(self.save_path, exist_ok=True)
+            print("Warning: ", self.save_path,
+                    " path not exist, creating path")
+        print('saving best model')
+        torch.save(self.best_model_wts, self.save_path+self.trial_name)
+        return checkpoint_path
+
+    def load_checkpoint(self, checkpoint_path):
+        self.model.load_state_dict(torch.load(checkpoint_path))
+    
+    def save_best_model(self):
+        print('saving best model')
+        torch.save(self.best_model_wts, self.save_path+self.trial_name+'.ae')
+
 
 
 # def train_DAE_model(model, data_loaders={}, optimizer=None, loss_function=None, n_epochs=100, scheduler=None, load=False, config={}, save_path="", eval=False):

@@ -1,0 +1,25 @@
+{
+  "batch_norm": true,
+  "batch_size": 16,
+  "data_path": "/Users/farzanehlabbaf/Documents/Drug Discovery/models/MyProject/MyProject/data/processed/DepMap_expression_processed.csv",
+  "dropout": 0.2,
+  "gene_test_loader": null,
+  "gene_train_loader": null,
+  "h_dims": [
+    1024
+  ],
+  "is_wandb": true,
+  "lr": 0.001,
+  "lr_step": 0.5,
+  "milestone": 10,
+  "model": "<class 'models.Simple_AE'>",
+  "name": "Dummy_AE",
+  "noise": 0,
+  "num_epoch_without_tune": 500,
+  "num_epoches": 500,
+  "num_genes_compressed": 128,
+  "num_genes_in": 15909,
+  "seed": 2,
+  "use_tune": true,
+  "wandb_group": "Save autoencoder with hdim 1024"
+}
