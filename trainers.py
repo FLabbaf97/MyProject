@@ -595,7 +595,7 @@ class DAETrainer(tune.Trainable):
         all_input = []
         all_output = []
         running_loss = []
-        with torch.no_grad()""
+        with torch.no_grad():
             for batchidx, (x, meta, idx) in enumerate(self.data_loaders['eval']):
                 x = x.to(self.device)
                 # x.requires_grad_(False)
