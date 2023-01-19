@@ -28,9 +28,10 @@ sys.path.append(parent)
 
 pipeline_config = {
     "use_tune": True,
+    "is_wandb": True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    # "seed": tune.grid_search([2, 3]),
-    "seed": 2,
+    "seed": tune.grid_search([2, 3]),
+    # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
     # "lr": tune.grid_search([1e-2, 1e-3]),
@@ -47,7 +48,7 @@ pipeline_config = {
     #     [10, 30, 60, 90, 120, 150, 180, 210],
     #     [10, 20, 30, 40, 50, 70, 90, 110, 150, 190]
     # ]),
-    "milestones": [10, 20, 30, 40, 50, 70, 90, 120, 150,180],
+    "milestones": [10, 20, 30, 40, 50, 70, 90, 110, 130, 150, 180, 210, 250,],
     # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
@@ -80,10 +81,10 @@ predictor_config = {
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",
     'load_ae': True,
-    'ae_path': 'saved/depMap_config/AE',
+    'ae_path': 'saved/AE_hdim_1024/Dummy_AE128/DAETrainer_48908_00000',
     'input_dim': 15909,
     'latent_dim': 128,
-    'h_dims': [512],
+    'h_dims': [1024],
     'drop_out': 0.2,
 }
 
@@ -101,7 +102,7 @@ dataset_config = {
     "val_set_prop": 0.2,
     "test_set_prop": 0.1,
     "test_on_unseen_cell_line": True,
-    "cell_lines_in_test": tune.grid_search([['MCF7', 'NCIH23', 'HCT116'], ['MCF7',], ['HCT116'], ['NCIH23']]),
+    "cell_lines_in_test":['MCF7'],
     "split_valid_train": "pair_level",
     "cell_line": None,  # 'PC-3',
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
@@ -109,6 +110,7 @@ dataset_config = {
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
+    "meta": False,
 }
 
 ########################################################################################################################
