@@ -569,7 +569,7 @@ class DrugCombMatrix:
         # Get train/valid/test indices for all (non unique) edges
         train_idx = np.where(all_edges_split == 0)[0]
         valid_idx = np.where(all_edges_split == 1)[0]
-        # test_idx = np.where(all_edges_split == 2)[0]
+        test_idx = np.where(all_edges_split == 2)[0]
         if self.duplicate_data:
             self.duplicate()
             # add compliment of edges to idx and train, val, test idx
@@ -619,11 +619,12 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         # gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(cell_line_list)
         cell_features = pd.read_csv(self.cell_data_file).set_index('cell_line_name')
         name_dict=find_cell_lines(cell_line_list, cell_features)
-
         gene_expr = cell_features.loc[name_dict.keys()].drop(columns=['cancer_type', 'disease', 'tissue'])
+        meta_transformed = self._transform_cell_line_metadata_df(meta)
         meta = cell_features.loc[name_dict.keys()][['cancer_type', 'disease', 'tissue']]
         gene_expr = gene_expr.rename(index=name_dict)
         meta = meta.rename(index=name_dict)
+
         # Run encoder on gene expressions:
         cell_line_features = []
         with torch.no_grad():
