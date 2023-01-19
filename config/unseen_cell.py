@@ -81,7 +81,7 @@ predictor_config = {
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",
     'load_ae': True,
-    'ae_path': 'saved/AE_hdim_1024/Dummy_AE128/DAETrainer_48908_00000',
+    'ae_path': 'saved/AE_hdim_1024/Dummy_AE128/DAETrainer_48908_00000.ae',
     'input_dim': 15909,
     'latent_dim': 128,
     'h_dims': [1024],

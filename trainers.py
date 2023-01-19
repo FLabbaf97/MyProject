@@ -220,10 +220,7 @@ class BasicTrainer(tune.Trainable):
         self.max_eval_r_squared = -1
 
     def step(self):
-
-        eval_metrics, _ = self.eval_epoch(
-            self.data, self.valid_loader, self.model)
-
+        
         train_metrics = self.train_epoch(
             self.data,
             self.train_loader,
@@ -231,11 +228,11 @@ class BasicTrainer(tune.Trainable):
             self.optim,
             self.scheduler,
         )
+        eval_metrics, _ = self.eval_epoch(
+            self.data, self.valid_loader, self.model)
 
         test_metrics, _ = self.eval_epoch(
             self.data, self.test_loader, self.model)
-
-
 
         eval_metrics = [("eval/" + k, v) for k, v in eval_metrics.items()]
         train_metrics = [("train/" + k, v) for k, v in train_metrics.items()]
