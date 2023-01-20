@@ -1,15 +1,15 @@
 
 import sys
 import os
- 
+
 # getting the name of the directory
 # where the this file is present.
 current = os.path.dirname(os.path.realpath(__file__))
- 
+
 # Getting the parent directory name
 # where the current directory is present.
 parent = os.path.dirname(current)
- 
+
 # adding the parent directory to
 # the sys.path.
 sys.path.append(parent)
@@ -30,8 +30,9 @@ from ray import tune
 
 pipeline_config = {
     "use_tune": True,
+    'is_wandb': True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([2,3]),
+    "seed": tune.grid_search([2,3,4]),
     # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
@@ -43,13 +44,13 @@ pipeline_config = {
     # 'lr_step': tune.grid_search([5e-1,1e-1]),
     'lr_step': 5e-1,
     'milestones': tune.grid_search([
-        [10, 20, 30, 50, 70, 100],
-        ]),
+        [10, 20, 30, 40, 60, 80, 100, 120],
+    ]),
     # 'total_epoch': tune.grid_search[200,400,1000],
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'baseline with tuned autoencoder'
+    "wandb_group": 'Baseline with new autoencoder and 46 cells'
 }
 
 predictor_config = {
@@ -60,13 +61,13 @@ predictor_config = {
             64,
             1,
         ],
-    "predictor_layers": 
+    "predictor_layers":
     [
         128,
         64,
         1,
-    ],
-    "drug_embed_hidden_layers":[512,],
+        ],
+    "drug_embed_hidden_layers": [512,],
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
@@ -74,16 +75,16 @@ predictor_config = {
     'cell_embed_len': 128,
     'drug_in_len': 1173,
 }
+
 autorncoder_config = {
-    "data": "data/processed/DepMap_expression_processed.csv",
+    "data": "data/processed/DepMap_expression_processed_1383_15806.csv",
     'load_ae': True,
-    'ae_path': "saved/Dummy_AE128/DAETrainer_48908_00000",
-    'input_dim' : 15909,
-    'latent_dim' : 128,
-    'h_dims' : [1024],
+    'ae_path': "saved/Farzaneh_AE_1383_15806_128/DAETrainer_bca1e_00001.ae",
+    'input_dim': 15806,
+    'latent_dim': 128,
+    'h_dims': [1024],
     'drop_out': 0.2,
 }
-
 
 model_config = {
     "model": MyBaseline,
@@ -123,7 +124,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 500, 'patience': 20},
+    "stop": {"training_iteration": 500, 'patience': 15},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,
