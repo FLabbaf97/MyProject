@@ -79,10 +79,10 @@ predictor_config = {
     'drug_in_len': 1173,
 }
 autorncoder_config = {
-    "data": "data/processed/DepMap_expression_processed.csv",
+    "data": "data/processed/DepMap_expression_processed_1383_15806.csv",
     'load_ae': True,
-    'ae_path': 'saved/AE_hdim_1024/Dummy_AE128/DAETrainer_48908_00000.ae',
-    'input_dim': 15909,
+    'ae_path': "saved/Farzaneh_AE_1383_15806_128/DAETrainer_bca1e_00001.ae",
+    'input_dim': 15806,
     'latent_dim': 128,
     'h_dims': [1024],
     'drop_out': 0.2,
