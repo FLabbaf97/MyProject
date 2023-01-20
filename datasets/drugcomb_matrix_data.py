@@ -20,7 +20,7 @@ import torch
 import os
 import random
 import copy
-#import reservoir as rsv
+import reservoir as rsv
 from sklearn.decomposition import PCA
 from pandas.api.types import is_string_dtype, is_numeric_dtype
 from pathlib import Path
@@ -185,6 +185,7 @@ class DrugCombMatrix:
     def processed_file_name(self):
 
         proc_file_name = self.__class__.__name__ + \
+                         "_" + self.study_name + \
                          str(self.fp_bits) + "_" + \
                          str(self.fp_radius) + "_" + \
                          str(self.rounds_to_include)
@@ -620,7 +621,7 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         cell_features = pd.read_csv(self.cell_data_file).set_index('cell_line_name')
         name_dict=find_cell_lines(cell_line_list, cell_features)
         gene_expr = cell_features.loc[name_dict.keys()].drop(columns=['cancer_type', 'disease', 'tissue'])
-        meta_transformed = self._transform_cell_line_metadata_df(meta)
+        # meta_transformed = self._transform_cell_line_metadata_df(meta)
         meta = cell_features.loc[name_dict.keys()][['cancer_type', 'disease', 'tissue']]
         gene_expr = gene_expr.rename(index=name_dict)
         meta = meta.rename(index=name_dict)
