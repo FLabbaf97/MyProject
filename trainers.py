@@ -140,6 +140,7 @@ class BasicTrainer(tune.Trainable):
             rounds_to_include=config["rounds_to_include"],
             duplicate_data=config['duplicate_data'],
             AE_config=AE_config,
+            one_hot=config['one_hot']
         )
 
 

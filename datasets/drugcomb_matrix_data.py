@@ -101,7 +101,8 @@ class DrugCombMatrix:
             rounds_to_include=(),
             duplicate_data=False,
             AE_config={},
-    ):
+            one_hot=True,
+        ):
         self.fp_bits = fp_bits
         self.fp_radius = fp_radius
         self.cell_line = cell_line
@@ -109,6 +110,7 @@ class DrugCombMatrix:
         self.rounds_to_include = list(rounds_to_include)
         self.name = 'DrugCombMatrix'
         self.duplicate_data = duplicate_data
+        self.one_hot = one_hot
 
         assert in_house_data in ["with", "without", "in_house_only"]
         self.in_house_data = in_house_data
@@ -204,9 +206,12 @@ class DrugCombMatrix:
         return
 
     def get_blocks(self):
-        blocks = rsv.get_specific_drug_combo_blocks(
-            study_name=self.study_name,
-        )["block_id"]
+        if self.study_name == '':
+            blocks = rsv.get_specific_drug_combo_blocks()["block_id"]
+        else:
+            blocks = rsv.get_specific_drug_combo_blocks(
+                study_name=self.study_name,
+            )["block_id"]
 
         return blocks
 
@@ -333,11 +338,13 @@ class DrugCombMatrix:
         drug_fps.columns = ["fp_" + str(i) for i in range(self.fp_bits)]
 
         # Add a one hot encoding of drugs to the drug features
-        one_hot = pd.DataFrame(np.eye(len(drug_fps)), columns=["hot_" + str(i)
-                                                               for i in range(len(drug_fps))],
-                               dtype=int).set_index(drug_fps.index)
-
-        drug_feat = pd.concat((drug_fps, one_hot), axis=1)
+        if(self.one_hot):
+            one_hot = pd.DataFrame(np.eye(len(drug_fps)), columns=["hot_" + str(i)
+                                                                   for i in range(len(drug_fps))],
+                                   dtype=int).set_index(drug_fps.index)
+            drug_feat = pd.concat((drug_fps, one_hot), axis=1)
+        else: 
+            drug_feat = drug_fps
 
         return drug_feat, rec_id_to_idx_dict
 
@@ -592,7 +599,18 @@ class DrugCombMatrix:
 # Dataset objects where cell-line features are from an autoencoder
 ########################################################################################################################
 class DrugCombMatrixWithAE(DrugCombMatrix):
-    def __init__(self, fp_bits=1024, fp_radius=4, cell_line=None, study_name="ALMANAC", in_house_data="without", rounds_to_include=(),duplicate_data=False, AE_config={}):
+    def __init__(
+        self, 
+        fp_bits=1024, 
+        fp_radius=4, 
+        cell_line=None, 
+        study_name="ALMANAC", 
+        in_house_data="without", 
+        rounds_to_include=(),
+        duplicate_data=False, 
+        AE_config={},
+        one_hot=True):
+        
         self.encoder = Simple_AE(input_dim=AE_config['input_dim'],
                                  latent_dim=AE_config['latent_dim'],
                                  h_dims=AE_config['h_dims'],
@@ -602,9 +620,8 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
         super().__init__(fp_bits, fp_radius, cell_line, study_name,
-                         in_house_data, rounds_to_include, duplicate_data, AE_config)
-
-
+                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
+        
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
         # Add drug index information to the df
         data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(
