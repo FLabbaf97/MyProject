@@ -30,7 +30,7 @@ pipeline_config = {
     "use_tune": True,
     'is_wandb': True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([2, 3]),
+    "seed": tune.grid_search([2, 3, 4]),
     # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
