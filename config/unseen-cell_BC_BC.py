@@ -31,8 +31,8 @@ pipeline_config = {
     "use_tune": True,
     'is_wandb': True,
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    # "seed": tune.grid_search([2, 3, 4]),
-    "seed": 2,
+    "seed": tune.grid_search([2, 3, 4]),
+    # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
     # "lr": tune.grid_search([1e-2,1e-2]),
@@ -92,7 +92,7 @@ model_config = {
 
 dataset_config = {
     "dataset": DrugCombMatrixWithAE,
-    "study_name": '',
+    "study_name": tune.grid_search(['','ALMANAC','ONEIL']),
     "in_house_data": 'without',
     "rounds_to_include": [],
     "val_set_prop": 0.2,
@@ -102,7 +102,7 @@ dataset_config = {
     "split_valid_train": "pair_level",
     "cell_line": Breast,  # 'PC-3',
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
-    "target": "bliss_max",
+    "target": tune.grid_search(["bliss_max",'bliss_avg',]),
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
