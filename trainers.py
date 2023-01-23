@@ -219,6 +219,9 @@ class BasicTrainer(tune.Trainable):
 
         self.patience = 0
         self.max_eval_r_squared = -1
+        self.max_eval_spearman = -1
+        self.test_spearman_for_max_eval_spearman = -1
+        self.test_R2_for_max_eval_spearman = -1
 
     def step(self):
         
@@ -245,14 +248,24 @@ class BasicTrainer(tune.Trainable):
         self.training_it += 1
 
         # Compute patience
-        if metrics['eval/comb_r_squared'] > self.max_eval_r_squared:
+        # if metrics['eval/comb_r_squared'] > self.max_eval_r_squared:
+        #     self.patience = 0
+        #     self.max_eval_r_squared = metrics['eval/comb_r_squared']
+        # else:
+        #     self.patience += 1
+        if metrics['eval/spearman'] > self.max_eval_spearman:
             self.patience = 0
-            self.max_eval_r_squared = metrics['eval/comb_r_squared']
+            self.max_eval_spearman = metrics['eval/spearman']
+            self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
+            self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
         else:
             self.patience += 1
 
         last_lr = self.scheduler.optimizer.param_groups[0]['lr']
         print ("last lr: ", last_lr)
+        metrics['test_for_max_eval_spearman'] = self.test_spearman_for_max_eval_spearman
+        metrics["test_R2_for_max_eval_spearman"] = self.test_R2_for_max_eval_spearman
+        metrics['max_eval_spearman'] = self.max_eval_spearman
         metrics['current_lr'] = last_lr
         metrics['patience'] = self.patience
         metrics['all_space_explored'] = 0
