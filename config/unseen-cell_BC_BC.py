@@ -92,7 +92,7 @@ model_config = {
 
 dataset_config = {
     "dataset": DrugCombMatrixWithAE,
-    "study_name": tune.grid_search(['','ALMANAC','ONEIL']),
+    "study_name": '',
     "in_house_data": 'without',
     "rounds_to_include": [],
     "val_set_prop": 0.2,
