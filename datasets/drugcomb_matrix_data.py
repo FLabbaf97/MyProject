@@ -105,7 +105,7 @@ class DrugCombMatrix:
         ):
         self.fp_bits = fp_bits
         self.fp_radius = fp_radius
-        self.cell_line = cell_line
+        self.cell_lines = cell_line
         self.study_name = study_name
         self.rounds_to_include = list(rounds_to_include)
         self.name = 'DrugCombMatrix'
@@ -127,12 +127,16 @@ class DrugCombMatrix:
             self.data = self.process()
 
         # Select a specific cell line is cell_line is not None
-        if cell_line is not None:
-            assert cell_line in self.data.cell_line_to_idx_dict.keys()
-            ixs = (
-                    self.data.ddi_edge_classes
-                    == self.data.cell_line_to_idx_dict[cell_line]
-            )
+        if self.cell_lines is not None:
+            ixs = torch.zeros(len(self.data.ddi_edge_classes)).bool()
+            valid_cells = []
+            for cell_line in self.cell_lines:
+                if cell_line in self.data.cell_line_to_idx_dict.keys():
+                    valid_cells.append(cell_line)
+            self.cell_lines = valid_cells
+            print("currently having ",len(self.cell_lines), " cell_lines. list of cell-lines are: ", self.cell_lines)
+            for cell_line in self.cell_lines:
+                ixs = torch.logical_or(ixs , (self.data.ddi_edge_classes == self.data.cell_line_to_idx_dict[cell_line]))
             for attr in dir(self.data):
                 if attr.startswith("ddi_edge_idx"):
                     self.data[attr] = self.data[attr][:, ixs]
@@ -440,7 +444,7 @@ class DrugCombMatrix:
             # Split s.t. test is a set of cell lines which do not appear in train and valid
             ##################################################################
 
-            assert config["cell_line"] is None
+            # assert config["cell_line"] is None
             assert len(config["cell_lines_in_test"]) > 0
 
             test_cell_line_idxs = [self.data.cell_line_to_idx_dict[cl_name] for cl_name in config["cell_lines_in_test"]]
