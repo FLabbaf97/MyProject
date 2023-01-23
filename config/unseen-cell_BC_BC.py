@@ -102,7 +102,7 @@ dataset_config = {
     "split_valid_train": "pair_level",
     "cell_line": Breast,  # 'PC-3',
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
-    "target": tune.grid_search(["bliss_max",'bliss_avg',]),
+    "target": tune.grid_search(["bliss_max",'bliss_av','css_av',]),
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
