@@ -210,8 +210,10 @@ class DrugCombMatrix:
         return
 
     def get_blocks(self):
-        if self.study_name == '':
-            blocks = rsv.get_specific_drug_combo_blocks()["block_id"]
+        if self.study_name is None or self.study_name == '':
+            if self.quality is None:
+                self.quality = 'high'
+            blocks = rsv.get_specific_drug_combo_blocks(qc_filtering=self.quality)["block_id"]
         else:
             blocks = rsv.get_specific_drug_combo_blocks(
                 study_name=self.study_name,
@@ -691,5 +693,38 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
             cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
 
+########################################################################################################################
+# Dataset objects where quality filtering is not default (default is high quality)
+########################################################################################################################
+class DrugCombMatrixWithAE_MQFilter(DrugCombMatrixWithAE):
+    def __init__(
+            self,
+            fp_bits=1024,
+            fp_radius=4,
+            cell_line=None,
+            study_name="ALMANAC",
+            in_house_data="without",
+            rounds_to_include=(),
+            duplicate_data=False,
+            AE_config={},
+            one_hot=True):
+        self.quality = 'medium'
+        super().__init__(fp_bits, fp_radius, cell_line, study_name,
+                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
 
 
+class DrugCombMatrixWithAE_offQFilter(DrugCombMatrixWithAE):
+    def __init__(
+            self,
+            fp_bits=1024,
+            fp_radius=4,
+            cell_line=None,
+            study_name="ALMANAC",
+            in_house_data="without",
+            rounds_to_include=(),
+            duplicate_data=False,
+            AE_config={},
+            one_hot=True):
+        self.quality = 'off'
+        super().__init__(fp_bits, fp_radius, cell_line, study_name,
+                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
