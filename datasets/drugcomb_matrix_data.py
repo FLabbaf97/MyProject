@@ -444,9 +444,18 @@ class DrugCombMatrix:
             # Split s.t. test is a set of cell lines which do not appear in train and valid
             ##################################################################
 
-            # assert config["cell_line"] is None
-            assert len(config["cell_lines_in_test"]) > 0
+            if config["cell_lines_in_test"] is None:
+                config['cell_lines_in_test'] = [
+                    list(self.data.cell_line_to_idx_dict.keys())[-1]]
+                print('no cell-line determined for test. testing on ',
+                      config['cell_lines_in_test'])
 
+            if config['cell_lines_in_test'] not in list(self.data.cell_line_to_idx_dict.keys()):
+                config['cell_lines_in_test'] = [
+                    list(self.data.cell_line_to_idx_dict.keys())[-1]]
+                print('cell-line you have determined for test is not in dataset. Instead, testing on ', config['cell_lines_in_test'])
+    
+            assert len(config["cell_lines_in_test"]) > 0
             test_cell_line_idxs = [self.data.cell_line_to_idx_dict[cl_name] for cl_name in config["cell_lines_in_test"]]
 
             test_idx = []

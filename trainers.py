@@ -114,12 +114,6 @@ def calculate_pair_distance(out):
 class BasicTrainer(tune.Trainable):
     def setup(self, config, wandb=True):
         print("Initializing regular training pipeline")
-        if wandb and config['use_tune']:
-            self.is_wandb = True
-            self.wandb = setup_wandb(
-                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
-        else:
-            self.is_wandb = False
         self.batch_size = config["batch_size"]
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         # device_type = 'mps'
@@ -223,8 +217,15 @@ class BasicTrainer(tune.Trainable):
         self.test_spearman_for_max_eval_spearman = -1
         self.test_R2_for_max_eval_spearman = -1
 
+        if wandb and config['use_tune']:
+            self.is_wandb = True
+            self.wandb = setup_wandb(
+                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
+        else:
+            self.is_wandb = False
+
     def step(self):
-        
+
         test_metrics, _ = self.eval_epoch(
             self.data, self.test_loader, self.model)
 
@@ -298,10 +299,6 @@ class ActiveTrainer(BasicTrainer):
         print("Initializing active training pipeline")
         super(ActiveTrainer, self).setup(config,wandb=False)
         self.is_wandb=False
-        if wandb and config['use_tune']:
-            self.wandb = setup_wandb(
-                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
-            self.is_wandb = True
         self.acquire_n_at_a_time = config["acquire_n_at_a_time"]
         self.acquisition = config["acquisition"](config)
         self.n_epoch_between_queries = config["n_epoch_between_queries"]
@@ -325,6 +322,10 @@ class ActiveTrainer(BasicTrainer):
         self.top_one_perc = set(self.unseen_idxs[torch.argsort(
             scores, descending=True)[:one_perc]].numpy())
         self.count = 0
+        if wandb and config['use_tune']:
+            self.wandb = setup_wandb(
+                config, trial_id=self.trial_id, trial_name=self.trial_name, group=config['wandb_group'])
+            self.is_wandb = True
 
     def step(self):
         # Check whether we have explored everything
