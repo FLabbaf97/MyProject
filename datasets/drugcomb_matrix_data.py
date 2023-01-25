@@ -452,9 +452,8 @@ class DrugCombMatrix:
                 print('no cell-line determined for test. testing on ',
                       config['cell_lines_in_test'])
 
-            if config['cell_lines_in_test'] not in list(self.data.cell_line_to_idx_dict.keys()):
-                config['cell_lines_in_test'] = [
-                    list(self.data.cell_line_to_idx_dict.keys())[-1]]
+            if config['cell_lines_in_test'][0] not in self.cell_lines:
+                config['cell_lines_in_test'] = [self.cell_lines[-1]]
                 print('cell-line you have determined for test is not in dataset. Instead, testing on ', config['cell_lines_in_test'])
     
             assert len(config["cell_lines_in_test"]) > 0
