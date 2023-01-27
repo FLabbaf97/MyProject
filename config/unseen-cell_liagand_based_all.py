@@ -99,7 +99,7 @@ dataset_config = {
     "test_on_unseen_cell_line": True,
     "cell_lines_in_test": ['MCF7'],
     "split_valid_train": "pair_level",
-    "cell_line": tune.grid_search([Breast, Lung, Skin, Blood]),   # 'PC-3',
+    "cell_line": tune.grid_search([Breast, Lung, Skin]),   # 'PC-3',
     # tune.grid_search(["css", "bliss", "zip", "loewe", "hsa"]),
     "target": tune.grid_search(["bliss_max", 'bliss_av', 'css_av']),
     "fp_bits": 1024,
