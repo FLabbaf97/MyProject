@@ -451,10 +451,11 @@ class DrugCombMatrix:
                     list(self.data.cell_line_to_idx_dict.keys())[-1]]
                 print('no cell-line determined for test. testing on ',
                       config['cell_lines_in_test'])
+            if self.cell_lines:
+                if config['cell_lines_in_test'][0] not in self.cell_lines:
+                    config['cell_lines_in_test'] = [self.cell_lines[-1]]
+                    print('cell-line you have determined for test is not in dataset. Instead, testing on ', config['cell_lines_in_test'])
 
-            if config['cell_lines_in_test'][0] not in self.cell_lines:
-                config['cell_lines_in_test'] = [self.cell_lines[-1]]
-                print('cell-line you have determined for test is not in dataset. Instead, testing on ', config['cell_lines_in_test'])
     
             assert len(config["cell_lines_in_test"]) > 0
             test_cell_line_idxs = [self.data.cell_line_to_idx_dict[cl_name] for cl_name in config["cell_lines_in_test"]]
@@ -588,10 +589,10 @@ class DrugCombMatrix:
                 [edge_to_split_dict[tuple(edge.tolist())] for edge in self.data.ddi_edge_idx.T]
             )
 
-        # Get train/valid/test indices for all (non unique) edges
-        train_idx = np.where(all_edges_split == 0)[0]
-        valid_idx = np.where(all_edges_split == 1)[0]
-        test_idx = np.where(all_edges_split == 2)[0]
+            # Get train/valid/test indices for all (non unique) edges
+            train_idx = np.where(all_edges_split == 0)[0]
+            valid_idx = np.where(all_edges_split == 1)[0]
+            test_idx = np.where(all_edges_split == 2)[0]
         if self.duplicate_data:
             self.duplicate()
             # add compliment of edges to idx and train, val, test idx
