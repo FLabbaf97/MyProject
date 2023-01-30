@@ -93,29 +93,22 @@ class Data(object):
 class DrugCombMatrix:
     def __init__(
             self,
-            fp_bits=1024,
-            fp_radius=4,
-            cell_line=None,
             study_name="ALMANAC",
-            in_house_data="without",
-            rounds_to_include=(),
-            duplicate_data=False,
-            AE_config={},
-            one_hot=True,
+            other_config={}
         ):
-        self.fp_bits = fp_bits
-        self.fp_radius = fp_radius
-        self.cell_lines = cell_line
+        self.fp_bits = other_config['fp_bits']
+        self.fp_radius = other_config['fp_radius']
+        self.cell_lines = other_config['cell_line']
         self.study_name = study_name
-        self.rounds_to_include = list(rounds_to_include)
+        self.rounds_to_include = list(other_config['rounds_to_include'])
         self.name = 'DrugCombMatrix'
-        self.duplicate_data = duplicate_data
-        self.one_hot = one_hot
+        self.duplicate_data = other_config['duplicate_data']
+        self.one_hot = other_config['one_hot']
 
-        assert in_house_data in ["with", "without", "in_house_only"]
-        self.in_house_data = in_house_data
+        assert other_config['in_house_data'] in ["with", "without", "in_house_only"]
+        self.in_house_data = other_config['in_house_data']
 
-        if in_house_data != "without":
+        if other_config['in_house_data'] != "without":
             assert len(self.rounds_to_include) > 0
 
         # Load processed dataset
@@ -616,15 +609,17 @@ class DrugCombMatrix:
 class DrugCombMatrixWithAE(DrugCombMatrix):
     def __init__(
         self, 
-        fp_bits=1024, 
-        fp_radius=4, 
-        cell_line=None, 
+        # fp_bits=1024, 
+        # fp_radius=4, 
+        # cell_line=None, 
         study_name="ALMANAC", 
-        in_house_data="without", 
-        rounds_to_include=(),
-        duplicate_data=False, 
+        # in_house_data="without", 
+        # rounds_to_include=(),
+        # duplicate_data=False, 
         AE_config={},
-        one_hot=True):
+        # one_hot=True,
+        other_config={}
+        ):
         
         self.encoder = Simple_AE(input_dim=AE_config['input_dim'],
                                  latent_dim=AE_config['latent_dim'],
@@ -634,8 +629,7 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.load_state_dict(torch.load(os.path.join(get_project_root(), AE_config['encoder_path'])))
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
-        super().__init__(fp_bits, fp_radius, cell_line, study_name,
-                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
+        super().__init__(study_name, other_config)
         
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
         # Add drug index information to the df
@@ -699,32 +693,34 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
 class DrugCombMatrixWithAE_MQFilter(DrugCombMatrixWithAE):
     def __init__(
             self,
-            fp_bits=1024,
-            fp_radius=4,
-            cell_line=None,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
             study_name="ALMANAC",
-            in_house_data="without",
-            rounds_to_include=(),
-            duplicate_data=False,
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
             AE_config={},
-            one_hot=True):
+            # one_hot=True
+            other_config={}
+            ):
         self.quality = 'medium'
-        super().__init__(fp_bits, fp_radius, cell_line, study_name,
-                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
+        super().__init__(study_name, AE_config, other_config)
 
 
 class DrugCombMatrixWithAE_offQFilter(DrugCombMatrixWithAE):
     def __init__(
             self,
-            fp_bits=1024,
-            fp_radius=4,
-            cell_line=None,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
             study_name="ALMANAC",
-            in_house_data="without",
-            rounds_to_include=(),
-            duplicate_data=False,
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
             AE_config={},
-            one_hot=True):
+            # one_hot=True
+            other_config={}
+            ):
         self.quality = 'off'
-        super().__init__(fp_bits, fp_radius, cell_line, study_name,
-                         in_house_data, rounds_to_include, duplicate_data, AE_config, one_hot)
+        super().__init__(study_name, AE_config, other_config)

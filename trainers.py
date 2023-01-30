@@ -126,15 +126,16 @@ class BasicTrainer(tune.Trainable):
             AE_config = {'encoder_path': config['ae_path'], "input_dim": config['input_dim'],
                          "latent_dim": config['latent_dim'], "h_dims": config['h_dims'], 'drop_out': config['drop_out'], 'data':config['data']}
         dataset = config["dataset"](
-            fp_bits=config["fp_bits"],
-            fp_radius=config["fp_radius"],
-            cell_line=config["cell_line"],
             study_name=config["study_name"],
-            in_house_data=config["in_house_data"],
-            rounds_to_include=config["rounds_to_include"],
-            duplicate_data=config['duplicate_data'],
             AE_config=AE_config,
-            one_hot=config['one_hot']
+            other_config = config
+            # fp_bits=config["fp_bits"],
+            # fp_radius=config["fp_radius"],
+            # cell_line=config["cell_line"],
+            # in_house_data=config["in_house_data"],
+            # rounds_to_include=config["rounds_to_include"],
+            # duplicate_data=config['duplicate_data'],
+            # one_hot=config['one_hot']
         )
 
 
