@@ -103,7 +103,8 @@ class DrugCombMatrix:
         self.rounds_to_include = list(other_config['rounds_to_include'])
         self.name = 'DrugCombMatrix'
         self.duplicate_data = other_config['duplicate_data']
-        self.one_hot = other_config['one_hot']
+        self.drug_one_hot = other_config['drug_one_hot']
+        self.cell_feature_type = other_config['cell_feature'] 
 
         assert other_config['in_house_data'] in ["with", "without", "in_house_only"]
         self.in_house_data = other_config['in_house_data']
@@ -185,9 +186,9 @@ class DrugCombMatrix:
 
         proc_file_name = self.__class__.__name__ + \
                          "_" + self.study_name + \
-                         str(self.fp_bits) + "_" + \
+                         "fp" + str(self.fp_bits) + "_" + \
                          str(self.fp_radius) + "_" + \
-                         str(self.rounds_to_include)
+                         "d_1_hot_" + str(self.drug_one_hot)
 
         return proc_file_name
 
@@ -279,7 +280,10 @@ class DrugCombMatrix:
         data.ddi_edge_in_house = torch.tensor(ddi_is_in_house, dtype=torch.long)
         data.cell_line_to_idx_dict = cell_line_to_idx_dict
         data.rec_id_to_idx_dict = rec_id_to_idx_dict
-        data.cell_line_features = torch.tensor(cell_line_features, dtype=torch.float)
+        # data.cell_line_features = cell_line_features
+        for attr in cell_line_features:
+            data[attr] = torch.tensor(
+                cell_line_features[attr], dtype=torch.float)
 
         # Scores
         data.ddi_edge_bliss_max = torch.tensor(ddi_edge_bliss_max, dtype=torch.float)
@@ -337,7 +341,7 @@ class DrugCombMatrix:
         drug_fps.columns = ["fp_" + str(i) for i in range(self.fp_bits)]
 
         # Add a one hot encoding of drugs to the drug features
-        if(self.one_hot):
+        if(self.drug_one_hot):
             one_hot = pd.DataFrame(np.eye(len(drug_fps)), columns=["hot_" + str(i)
                                                                    for i in range(len(drug_fps))],
                                    dtype=int).set_index(drug_fps.index)
@@ -380,28 +384,39 @@ class DrugCombMatrix:
 
         return pd.concat(to_concat, axis=1).to_numpy()
 
+
+    def _get_cell_features(self, data_df):
+        # Get list of cell lines
+        cell_line_list = list(data_df["cell_line_name"].unique())
+        cell_line_list.sort()
+
+        # Retrieve cell line features
+        gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(
+            cell_line_list)
+        meta = self._transform_cell_line_metadata_df(metadata)
+        to_concat = [self._do_pca(df)
+                     for df in (gene_expr, gene_mutation, gene_cn)]
+        to_concat.append(meta)
+
+        features = np.concatenate(to_concat, axis=1)
+
+        # Restrict to cell lines with features
+        cell_line_list = list(gene_expr.index)
+        one_hot = pd.DataFrame(np.eye(len(cell_line_list)), columns=["hot_" + str(i)
+                                                                     for i in range(len(cell_line_list))],dtype=int).set_index(meta.index)
+        cell_line_features = {'cell_meta': meta.to_numpy(),
+                              'cell_one_hot': one_hot.to_numpy(), 
+                              'cell_pca': features.to_numpy()}
+        return cell_line_features, cell_line_list
+
     def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
 
         # Add drug index information to the df
         data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(lambda id: rec_id_to_idx_dict[id])
         data_df["drug_col_idx"] = data_df['drug_col_recover_id'].apply(lambda id: rec_id_to_idx_dict[id])
 
-        # Get list of cell lines
-        cell_line_list = list(data_df["cell_line_name"].unique())
-        cell_line_list.sort()
-
-        # Retrieve cell line features
-        gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(cell_line_list)
-
-        to_concat = [self._do_pca(df) for df in (gene_expr, gene_mutation, gene_cn)]
-        to_concat.append(self._transform_cell_line_metadata_df(metadata))
-
-        cell_line_features = np.concatenate(to_concat, axis=1)
-
-        # Restrict to cell lines with features
-        cell_line_list = list(gene_expr.index)
+        cell_line_features, cell_line_list = self._get_cell_features(data_df)
         data_df = data_df[data_df['cell_line_name'].apply(lambda cl: cl in cell_line_list)]
-
         # Get cell line dictionary
         cell_line_to_idx_dict = dict((v, k) for k, v in enumerate(cell_line_list))
 
@@ -630,62 +645,94 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
         self.encoder.eval()
         self.cell_data_file = AE_config['data']
         super().__init__(study_name, other_config)
-        
-    def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
-        # Add drug index information to the df
-        data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(
-            lambda id: rec_id_to_idx_dict[id])
-        data_df["drug_col_idx"] = data_df['drug_col_recover_id'].apply(
-            lambda id: rec_id_to_idx_dict[id])
 
+
+    def _get_cell_features(self, data_df):
         # Get list of cell lines
         cell_line_list = list(data_df["cell_line_name"].unique())
         cell_line_list.sort()
 
-        # Retrieve cell line features
-        # gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(cell_line_list)
-        cell_features = pd.read_csv(self.cell_data_file).set_index('cell_line_name')
-        name_dict=find_cell_lines(cell_line_list, cell_features)
-        gene_expr = cell_features.loc[name_dict.keys()].drop(columns=['cancer_type', 'disease', 'tissue'])
+        cell_features = pd.read_csv(
+            self.cell_data_file).set_index('cell_line_name')
+        name_dict = find_cell_lines(cell_line_list, cell_features)
+        gene_expr = cell_features.loc[name_dict.keys()].drop(
+            columns=['cancer_type', 'disease', 'tissue'])
         # meta_transformed = self._transform_cell_line_metadata_df(meta)
-        meta = cell_features.loc[name_dict.keys()][['cancer_type', 'disease', 'tissue']]
+        my_meta = cell_features.loc[name_dict.keys(
+        )][['cancer_type', 'disease', 'tissue']]
         gene_expr = gene_expr.rename(index=name_dict)
-        meta = meta.rename(index=name_dict)
+        my_meta = my_meta.rename(index=name_dict)
 
-        # Run encoder on gene expressions:
-        cell_line_features = []
+        # Run encoder on gene expressions
         with torch.no_grad():
             decoded, embeded = self.encoder(
                 torch.tensor(gene_expr.values).float())
-        cell_line_features = embeded
         # Restrict to cell lines with features
         cell_line_list = list(gene_expr.index)
-        data_df = data_df[data_df['cell_line_name'].apply(
-            lambda cl: cl in name_dict.values())]
 
-        # Get cell line dictionary
-        cell_line_to_idx_dict = dict((v, k)
-                                     for k, v in enumerate(cell_line_list))
+        one_hot = pd.DataFrame(np.eye(len(cell_line_list)), columns=["hot_" + str(i)
+                                                                    for i in range(len(cell_line_list))], dtype=int).set_index(gene_expr.index)
+        cell_line_features = {
+            'cell_one_hot': one_hot.to_numpy(),
+                            'cell_embd_expr': embeded
+                            }
+        return cell_line_features, cell_line_list
 
-        # Add categorical encoding of cell lines
-        data_df = copy.deepcopy(data_df)  # To avoid pandas issue
-        data_df["cell_line_cat"] = data_df["cell_line_name"].apply(
-            lambda c: cell_line_to_idx_dict[c])
+    # def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
+    #     # Add drug index information to the df
+    #     data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(
+    #         lambda id: rec_id_to_idx_dict[id])
+    #     data_df["drug_col_idx"] = data_df['drug_col_recover_id'].apply(
+    #         lambda id: rec_id_to_idx_dict[id])
 
-        # Drug indices of combos
-        ddi_edge_idx = data_df[["drug_row_idx", "drug_col_idx"]].to_numpy().T
-        # Cell lines
-        ddi_edge_classes = data_df["cell_line_cat"].to_numpy()
-        # Scores
-        ddi_edge_bliss_max = data_df['synergy_bliss_max'].to_numpy()
-        ddi_edge_bliss_av = data_df['synergy_bliss'].to_numpy()
-        ddi_edge_css_av = data_df['css_ri'].to_numpy()
+    #     # Get list of cell lines
+    #     cell_line_list = list(data_df["cell_line_name"].unique())
+    #     cell_line_list.sort()
 
-        # Is in house
-        ddi_is_in_house = data_df['is_in_house'].to_numpy()
+    #     # Retrieve cell line features
+    #     # gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(cell_line_list)
+    #     cell_features = pd.read_csv(self.cell_data_file).set_index('cell_line_name')
+    #     name_dict=find_cell_lines(cell_line_list, cell_features)
+    #     gene_expr = cell_features.loc[name_dict.keys()].drop(columns=['cancer_type', 'disease', 'tissue'])
+    #     # meta_transformed = self._transform_cell_line_metadata_df(meta)
+    #     meta = cell_features.loc[name_dict.keys()][['cancer_type', 'disease', 'tissue']]
+    #     gene_expr = gene_expr.rename(index=name_dict)
+    #     meta = meta.rename(index=name_dict)
 
-        return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
-            cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
+    #     # Run encoder on gene expressions:
+    #     cell_line_features = []
+    #     with torch.no_grad():
+    #         decoded, embeded = self.encoder(
+    #             torch.tensor(gene_expr.values).float())
+    #     cell_line_features = embeded
+    #     # Restrict to cell lines with features
+    #     cell_line_list = list(gene_expr.index)
+    #     data_df = data_df[data_df['cell_line_name'].apply(
+    #         lambda cl: cl in name_dict.values())]
+
+    #     # Get cell line dictionary
+    #     cell_line_to_idx_dict = dict((v, k)
+    #                                  for k, v in enumerate(cell_line_list))
+
+    #     # Add categorical encoding of cell lines
+    #     data_df = copy.deepcopy(data_df)  # To avoid pandas issue
+    #     data_df["cell_line_cat"] = data_df["cell_line_name"].apply(
+    #         lambda c: cell_line_to_idx_dict[c])
+
+    #     # Drug indices of combos
+    #     ddi_edge_idx = data_df[["drug_row_idx", "drug_col_idx"]].to_numpy().T
+    #     # Cell lines
+    #     ddi_edge_classes = data_df["cell_line_cat"].to_numpy()
+    #     # Scores
+    #     ddi_edge_bliss_max = data_df['synergy_bliss_max'].to_numpy()
+    #     ddi_edge_bliss_av = data_df['synergy_bliss'].to_numpy()
+    #     ddi_edge_css_av = data_df['css_ri'].to_numpy()
+
+    #     # Is in house
+    #     ddi_is_in_house = data_df['is_in_house'].to_numpy()
+
+    #     return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
+    #         cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
 
 ########################################################################################################################
 # Dataset objects where quality filtering is not default (default is high quality)

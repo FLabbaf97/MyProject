@@ -149,7 +149,7 @@ class MyBaseline(torch.nn.Module):
         assert predictor_layers[-1] == 1
 
         self.predictor = self.get_predictor(data, config, predictor_layers)
-        self.apply(self._init_weights)
+        # self.apply(self._init_weights)
 
     def forward(self, data, drug_drug_batch):
         return self.predictor(data, drug_drug_batch)
@@ -270,18 +270,16 @@ class MyMLPPredictor(torch.nn.Module):
     def __init__(self, data, config, predictor_layers):
 
         super(MyMLPPredictor, self).__init__()
-
-        self.num_cell_lines = len(data.cell_line_to_idx_dict.keys())
         self.drug_embed_len = config['drug_embed_len']
         # TODO: if you want to use the autoencoder, this is not the best practice
-        self.cell_embed_len = config['cell_embed_len']
+        self.cell_embed_len = data.cell_line_features.shape[1]
         device_type = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(device_type)
         self.layer_dims = predictor_layers
         #layers on drug features
         self.drug_embed_hidden_layers = config["drug_embed_hidden_layers"]
         assert len(self.drug_embed_hidden_layers) > 0
-        assert self.drug_embed_hidden_layers[-1] < config['drug_in_len']
+        assert self.drug_embed_hidden_layers[-1] < data.x_drugs.shape[1]
 
         layers_before_cell = []
         layers_after_cell = []
@@ -290,7 +288,7 @@ class MyMLPPredictor(torch.nn.Module):
         layers_before_cell = self.add_layer(
             layers_before_cell,
             0,
-            config['drug_in_len'],
+            data.x_drugs.shape[1],
             self.drug_embed_hidden_layers[0]
         )
         layers_before_cell = self.add_layer(
@@ -317,7 +315,7 @@ class MyMLPPredictor(torch.nn.Module):
 
         self.before_merge_mlp = torch.nn.Sequential(*layers_before_cell)
         self.after_merge_mlp = torch.nn.Sequential(*layers_after_cell)
-        self.apply(self._init_weights)
+        # self.apply(self._init_weights)
 
     def forward(self, data, drug_drug_batch):
         h_drug_1, h_drug_2, cell_lines = self.get_batch(data, drug_drug_batch)

@@ -152,7 +152,9 @@ class BasicTrainer(tune.Trainable):
                 "css_av": self.data.ddi_edge_css_av,
             }
             self.data.ddi_edge_response = possible_target_dicts[config["target"]]
-
+        if "cell_feature" in config.keys():
+            assert config['cell_feature'] in ['meta', 'one_hot', 'embd_mut', 'embd_cnv' , 'embd_expr' , 'pca']
+            self.data.cell_line_features = self.data['cell_'+config['cell_feature']]
         torch.manual_seed(config["seed"])
         np.random.seed(config["seed"])
 
@@ -180,7 +182,6 @@ class BasicTrainer(tune.Trainable):
             test_ddi_dataset,
             batch_size=1024
         )
-
 
         # Initialize model
         self.model = config["model"](self.data, config)
