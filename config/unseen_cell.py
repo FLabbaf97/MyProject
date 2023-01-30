@@ -75,8 +75,6 @@ predictor_config = {
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
     "drug_embed_len": 128,
-    'cell_embed_len': 128,
-    'drug_in_len': 1173,
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed_1383_15806.csv",
@@ -111,7 +109,8 @@ dataset_config = {
     "fp_radius": 2,
     'duplicate_data': True,
     "meta": False,
-    'one_hot': True,
+    'drug_one_hot': True,
+    'cell_feature': 'embd_expr',
 }
 
 ########################################################################################################################
@@ -129,7 +128,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     "memory": 1800,
-    "stop": {"training_iteration": 500, 'patience': 30},
+    "stop": {"training_iteration": 500, 'patience': 10},
     "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": False,

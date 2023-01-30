@@ -58,8 +58,6 @@ predictor_config = {
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
     "drug_embed_len": 128,
-    'cell_embed_len': 220,
-    'drug_in_len': 1173,
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",
@@ -80,6 +78,7 @@ model_config = {
 dataset_config = {
     "dataset": DrugCombMatrix,
     "study_name": 'ALMANAC',
+    "drug_one_hot": True,
     "in_house_data": 'without',
     "rounds_to_include": [],
     "val_set_prop": 0.2,
@@ -92,6 +91,7 @@ dataset_config = {
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': False,
+    'cell_feature': 'pca',
 
 }
 

@@ -55,8 +55,6 @@ predictor_config = {
     "merge_n_layers_before_the_end": 2,
     # "allow_neg_eigval": True,
     "drug_embed_len": 128,
-    'cell_embed_len': 128,
-    'drug_in_len': 1173,
 }
 
 model_config = {
@@ -79,6 +77,7 @@ List of cell line names:
 dataset_config = {
     "dataset": DrugCombMatrixWithAE,
     "study_name": 'ALMANAC',
+    "drug_one_hot": True,
     "in_house_data": 'without',
     "rounds_to_include": [],
     "cell_line": 'MCF7',  # Restrict to a specific cell line
@@ -91,6 +90,7 @@ dataset_config = {
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': False,
+    'cell_feature': 'embd_expr',
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed.csv",
