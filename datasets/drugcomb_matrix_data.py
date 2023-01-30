@@ -186,7 +186,7 @@ class DrugCombMatrix:
 
         proc_file_name = self.__class__.__name__ + \
                          "_" + self.study_name + \
-                         "fp" + str(self.fp_bits) + "_" + \
+                         "_fp" + str(self.fp_bits) + "_" + \
                          str(self.fp_radius) + "_" + \
                          "d_1_hot_" + str(self.drug_one_hot)
 
