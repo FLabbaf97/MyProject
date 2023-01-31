@@ -94,7 +94,6 @@ class DrugCombMatrix:
     def __init__(
             self,
             study_name="ALMANAC",
-            AE_config = {},
             other_config={}
         ):
         self.fp_bits = other_config['fp_bits']
