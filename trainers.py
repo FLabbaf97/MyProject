@@ -540,8 +540,9 @@ class DAETrainer(tune.Trainable):
         self.cell_features = pd.read_csv(self.data_path).set_index('cell_line_name')
         # Split the data into a training set and a test set
         self.data_loaders = {}
-        self.data_loaders['train'], self.data_loaders['eval'], num_genes_in = self.data_split()
-
+        self.data_loaders['train'], self.data_loaders['eval'], self.data_loaders['test'], num_genes_in = self.data_split()
+        torch.manual_seed(config["seed"])
+        np.random.seed(config["seed"])
         # """ prepare AutoEncoder model """
         self.model = config['model'](
             input_dim=num_genes_in,
@@ -637,6 +638,29 @@ class DAETrainer(tune.Trainable):
             self.best_loss = epoch_loss
             self.patience = 0
             self.best_model_wts = copy.deepcopy(self.model.state_dict())
+            # calculate test metrics
+            with torch.no_grad():
+                for batchidx, (x, meta, idx) in enumerate(self.data_loaders['test']):
+                    x = x.to(self.device)
+                    # x.requires_grad_(False)
+                    # encode and decode
+                    output, embeded = self.model(x)
+                    # compute loss
+                    loss = self.loss_function(output, x)
+                    all_input.extend(x.tolist())
+                    all_output.extend(output.tolist())
+                    # zero the parameter (weight) gradients
+                    self.optimizer.zero_grad()
+                    running_loss.append(loss.item())
+            epoch_loss = np.mean(running_loss)
+            epoch_pearson_r = []
+            for i in range(len(all_input)):
+                epoch_pearson_r.append(
+                    pearsonr(all_input[i], all_output[i]).statistic)
+            avg_pearson = np.mean(epoch_pearson_r)
+            metrics['test/'+"loss_mean"] = epoch_loss
+            metrics['test/'+"pearson_r"] = avg_pearson
+
         else:
             self.patience+=1
         metrics['eval/best_loss']= self.best_loss
@@ -648,15 +672,19 @@ class DAETrainer(tune.Trainable):
 
     def data_split(self):
         cell_features_train, cell_features_test = train_test_split(
-            self.cell_features, test_size=0.2, random_state=42)
+            self.cell_features, test_size=0.3, random_state=42)
         cell_feature_train_dataset = CellGeneDataset(cell_features_train)
         cell_fearute_train_dataloader = DataLoader(
             cell_feature_train_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
+        cell_features_eval, cell_features_test = train_test_split(cell_features_test, test_size=0.3, random_state=42)
+        cell_feature_eval_dataset = CellGeneDataset(cell_features_eval)
+        cell_fearute_eval_dataloader = DataLoader(
+            cell_feature_eval_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
         cell_feature_test_dataset = CellGeneDataset(cell_features_test)
         cell_fearute_test_dataloader = DataLoader(
             cell_feature_test_dataset, collate_fn=collate_fn, batch_size=self.batch_size, shuffle=True)
         num_genes_in = cell_feature_train_dataset.cell_features.shape[1]
-        return cell_fearute_train_dataloader, cell_fearute_test_dataloader, num_genes_in
+        return cell_fearute_train_dataloader, cell_fearute_eval_dataloader, cell_fearute_test_dataloader, num_genes_in
     
     def save_checkpoint(self, checkpoint_dir):
         print("======================== in save checkpoit ======================================")

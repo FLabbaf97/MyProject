@@ -39,7 +39,7 @@ cell_autoencoder_config = {
     #     [1024],
     # ]),
     "num_epoches": 500,
-    "seed": tune.grid_search([2,3]),
+    "seed": tune.grid_search([1,2,3]),
     # Optimizer config
     "lr": 1e-3,
     # "lr": tune.choice([1e-2,1e-3]),
@@ -73,7 +73,7 @@ configuration = {
     },
     "summaries_dir": os.path.join(get_project_root(), "RayLogs"),
     # "memory": 1800,
-    "stop": {"training_iteration": 500, 'patience':20, },
+    "stop": {"training_iteration": 500, 'patience':10,},
     "checkpoint_score_attr": 'eval/loss_mean',
     'checkpoint_score_order': "min",
     "keep_checkpoints_num": 1,
