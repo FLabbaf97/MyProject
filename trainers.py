@@ -154,7 +154,9 @@ class BasicTrainer(tune.Trainable):
             self.data.ddi_edge_response = possible_target_dicts[config["target"]]
         if "cell_feature" in config.keys():
             assert config['cell_feature'] in ['meta', 'one_hot', 'embd_mut', 'embd_cnv' , 'embd_expr' , 'pca']
-            self.data.cell_line_features = self.data['cell_'+config['cell_feature']]
+            self.data.cell_line_features = self.data['cell_'+ config['cell_feature']]
+        else:
+            print('Error: no type defined for cell_features')
         torch.manual_seed(config["seed"])
         np.random.seed(config["seed"])
 

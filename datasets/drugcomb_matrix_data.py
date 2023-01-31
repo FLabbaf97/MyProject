@@ -94,6 +94,7 @@ class DrugCombMatrix:
     def __init__(
             self,
             study_name="ALMANAC",
+            AE_config = {},
             other_config={}
         ):
         self.fp_bits = other_config['fp_bits']
@@ -188,7 +189,7 @@ class DrugCombMatrix:
                          "_" + self.study_name + \
                          "_fp" + str(self.fp_bits) + "_" + \
                          str(self.fp_radius) + "_" + \
-                         "d_1_hot_" + str(self.drug_one_hot)
+                         "D_OneHot" + str(self.drug_one_hot)
 
         return proc_file_name
 
@@ -205,7 +206,7 @@ class DrugCombMatrix:
 
     def get_blocks(self):
         if self.study_name is None or self.study_name == '':
-            if self.quality is None:
+            if not hasattr(self, 'quality'):
                 self.quality = 'high'
             blocks = rsv.get_specific_drug_combo_blocks(qc_filtering=self.quality)["block_id"]
         else:
@@ -754,6 +755,22 @@ class DrugCombMatrixWithAE_MQFilter(DrugCombMatrixWithAE):
         self.quality = 'medium'
         super().__init__(study_name, AE_config, other_config)
 
+class DrugCombMatrixWithAE_HQFilter(DrugCombMatrixWithAE):
+    def __init__(
+            self,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
+            study_name="ALMANAC",
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
+            AE_config={},
+            # one_hot=True
+            other_config={}
+            ):
+        self.quality = 'high'
+        super().__init__(study_name, AE_config, other_config)
 
 class DrugCombMatrixWithAE_offQFilter(DrugCombMatrixWithAE):
     def __init__(
