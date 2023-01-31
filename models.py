@@ -143,8 +143,7 @@ class MyBaseline(torch.nn.Module):
         self.criterion = torch.nn.MSELoss()
 
         # Compute dimension of input for predictor
-        predictor_layers = [config['drug_embed_len']] + \
-            config["predictor_layers"]
+        predictor_layers = config["predictor_layers"]
 
         assert predictor_layers[-1] == 1
 
@@ -305,7 +304,7 @@ class MyMLPPredictor(torch.nn.Module):
             self.drug_embed_len*2+self.cell_embed_len,
             self.layer_dims[0]
         )
-        for i in range(1,len(self.layer_dims)-1):
+        for i in range(0,len(self.layer_dims)-1):
             layers_after_cell = self.add_layer(
                 layers_after_cell,
                 i,
