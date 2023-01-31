@@ -53,7 +53,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'compare multi-cell on drugComb data with and without cell features'
+    "wandb_group": 'compare cell-transfer on drugComb data with and without cell features'
 }
 
 predictor_config = {
