@@ -101,7 +101,7 @@ dataset_config = {
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
-    'drug_one_hot': True,
+    'drug_one_hot': False,
     'cell_feature': tune.grid_search(['embd_expr', 'one_hot']),
 }
 
