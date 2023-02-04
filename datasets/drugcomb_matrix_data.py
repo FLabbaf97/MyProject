@@ -96,6 +96,8 @@ class DrugCombMatrix:
             study_name="ALMANAC",
             other_config={}
         ):
+        if not hasattr(self, 'quality'):
+            self.quality = 'off'
         self.fp_bits = other_config['fp_bits']
         self.fp_radius = other_config['fp_radius']
         self.cell_lines = other_config['cell_line']
@@ -205,12 +207,10 @@ class DrugCombMatrix:
 
     def get_blocks(self):
         if self.study_name is None or self.study_name == '':
-            if not hasattr(self, 'quality'):
-                self.quality = 'high'
             blocks = rsv.get_specific_drug_combo_blocks(qc_filtering=self.quality)["block_id"]
         else:
             blocks = rsv.get_specific_drug_combo_blocks(
-                study_name=self.study_name,
+                study_name=self.study_name, qc_filtering=self.quality
             )["block_id"]
 
         return blocks
@@ -227,13 +227,14 @@ class DrugCombMatrix:
 
         combo_data = rsv.get_drug_combo_data_combos(
             block_ids=blocks,
+            qc_filtering=self.quality
         )
 
         if len(self.rounds_to_include) == 0:
             # If no rounds are included, we can add specific scores which are not provided in in house data
             combo_data = combo_data[['cell_line_name', 'drug_row_recover_id', 'drug_row_smiles',
                                      'drug_col_recover_id', 'drug_col_smiles', 'synergy_bliss_max', 'synergy_bliss',
-                                     'css_ri']]
+                                     'css_ri','S_sum', 'S_mean', 'S_max']]
         else:
             combo_data = combo_data[['cell_line_name', 'drug_row_recover_id', 'drug_row_smiles',
                                      'drug_col_recover_id', 'drug_col_smiles', 'synergy_bliss_max']]
@@ -263,7 +264,7 @@ class DrugCombMatrix:
         # Get combo experiments
         # get information for edges between drugs. one edge for each experiment on a cell_line. including cell_line fearuters
         ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
-        cell_line_to_idx_dict, cell_line_features, \
+        ddi_edge_S_sum, ddi_edge_S_av, ddi_edge_S_max, cell_line_to_idx_dict, cell_line_features, \
         ddi_is_in_house = self._get_ddi_edges(combo_data, rec_id_to_idx_dict)
 
         ##################################################################
@@ -289,6 +290,10 @@ class DrugCombMatrix:
         data.ddi_edge_bliss_max = torch.tensor(ddi_edge_bliss_max, dtype=torch.float)
         data.ddi_edge_bliss_av = torch.tensor(ddi_edge_bliss_av, dtype=torch.float)
         data.ddi_edge_css_av = torch.tensor(ddi_edge_css_av, dtype=torch.float)
+        data.ddi_edge_S_av = torch.tensor(ddi_edge_S_av, dtype=torch.float)
+        data.ddi_edge_S_max = torch.tensor(ddi_edge_S_max, dtype=torch.float)
+        data.ddi_edge_S_sum = torch.tensor(ddi_edge_S_sum, dtype=torch.float)
+
 
         # Add attributes to data
         data.fp_radius = self.fp_radius
@@ -432,12 +437,16 @@ class DrugCombMatrix:
         ddi_edge_bliss_max = data_df['synergy_bliss_max'].to_numpy()
         ddi_edge_bliss_av = data_df['synergy_bliss'].to_numpy()
         ddi_edge_css_av = data_df['css_ri'].to_numpy()
+        ddi_edge_S_sum = data_df['S_sum'].to_numpy()
+        ddi_edge_S_av = data_df['S_mean'].to_numpy()
+        ddi_edge_S_max = data_df['S_max'].to_numpy()
+
 
         # Is in house
         ddi_is_in_house = data_df['is_in_house'].to_numpy()
 
         return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
-               cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
+            ddi_edge_S_sum, ddi_edge_S_av, ddi_edge_S_max, cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
 
     def random_split(self, config):
 
