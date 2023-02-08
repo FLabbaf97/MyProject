@@ -195,14 +195,11 @@ class DrugCombMatrix:
         return proc_file_name
 
     def duplicate(self):
-        self.data.ddi_edge_bliss_av = self.data.ddi_edge_bliss_av.repeat(2)
-        self.data.ddi_edge_bliss_max = self.data.ddi_edge_bliss_max.repeat(2)
-        self.data.ddi_edge_classes = self.data.ddi_edge_classes.repeat(2)
-        self.data.ddi_edge_css_av = self.data.ddi_edge_css_av.repeat(2)
-        self.data.ddi_edge_in_house = self.data.ddi_edge_in_house.repeat(2)
-        self.data_max_index = self.data.ddi_edge_idx.shape[1]
-        # self.ddi_edge_response = self.data.ddi_edge_responsse.repeat(2)
-        self.data.ddi_edge_idx = self.data.ddi_edge_idx.repeat(1,2)
+        for attr in dir(self.data):
+                if attr.startswith("ddi_edge_idx"):
+                    self.data[attr] = self.data[attr].repeat(1,2)
+                elif attr.startswith("ddi_edge_"):
+                    self.data[attr] = self.data[attr].repeat(2)
         return
 
     def get_blocks(self):
@@ -611,6 +608,7 @@ class DrugCombMatrix:
             valid_idx = np.where(all_edges_split == 1)[0]
             test_idx = np.where(all_edges_split == 2)[0]
         if self.duplicate_data:
+            self.data_max_index = self.data.ddi_edge_idx.shape[1]
             self.duplicate()
             # add compliment of edges to idx and train, val, test idx
             train_idx = np.concatenate((train_idx,train_idx+self.data_max_index))
@@ -752,7 +750,7 @@ class DrugCombMatrixWithAE_MQFilter(DrugCombMatrixWithAE):
             # fp_bits=1024,
             # fp_radius=4,
             # cell_line=None,
-            study_name="ALMANAC",
+            study_name="",
             # in_house_data="without",
             # rounds_to_include=(),
             # duplicate_data=False,
@@ -769,7 +767,7 @@ class DrugCombMatrixWithAE_HQFilter(DrugCombMatrixWithAE):
             # fp_bits=1024,
             # fp_radius=4,
             # cell_line=None,
-            study_name="ALMANAC",
+            study_name="",
             # in_house_data="without",
             # rounds_to_include=(),
             # duplicate_data=False,
@@ -786,7 +784,7 @@ class DrugCombMatrixWithAE_offQFilter(DrugCombMatrixWithAE):
             # fp_bits=1024,
             # fp_radius=4,
             # cell_line=None,
-            study_name="ALMANAC",
+            study_name="",
             # in_house_data="without",
             # rounds_to_include=(),
             # duplicate_data=False,
@@ -796,3 +794,177 @@ class DrugCombMatrixWithAE_offQFilter(DrugCombMatrixWithAE):
             ):
         self.quality = 'off'
         super().__init__(study_name, AE_config, other_config)
+
+
+class DrugCombForDataAnalysis(DrugCombMatrixWithAE):
+    def __init__(
+            self,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
+            study_name="",
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
+            AE_config={},
+            # one_hot=True
+            other_config={}
+    ):
+        self.quality = 'off'
+        super().__init__(study_name, AE_config, other_config)
+
+    def process(self):
+
+        print("Processing the dataset, only happens the first time.")
+
+        ##################################################################
+        # Load DrugComb dataframe
+        ##################################################################
+
+        blocks = self.get_blocks()
+
+        combo_data = rsv.get_drug_combo_data_combos(
+            block_ids=blocks,
+            qc_filtering=self.quality
+        )
+
+        # if len(self.rounds_to_include) == 0:
+        #     # If no rounds are included, we can add specific scores which are not provided in in house data
+        #     combo_data = combo_data[['cell_line_name', 'drug_row_recover_id', 'drug_row_smiles',
+        #                              'drug_col_recover_id', 'drug_col_smiles', 'synergy_bliss_max', 'synergy_bliss',
+        #                              'css_ri', 'S_sum', 'S_mean', 'S_max']]
+        # else:
+        #     combo_data = combo_data[['cell_line_name', 'drug_row_recover_id', 'drug_row_smiles',
+        #                              'drug_col_recover_id', 'drug_col_smiles', 'synergy_bliss_max']]
+
+        combo_data['is_in_house'] = 0
+
+        for round_id in self.rounds_to_include:
+            in_house_data = rsv.get_inhouse_data(experiment_round=round_id)
+            in_house_data = in_house_data[['cell_line_name', 'drug_row_recover_id', 'drug_row_smiles',
+                                           'drug_col_recover_id', 'drug_col_smiles', 'synergy_bliss_max']]
+            in_house_data['is_in_house'] = 1
+
+            # Add scores that are not included in in_house_data
+            in_house_data['css_ri'] = 0
+            in_house_data['synergy_bliss'] = 0
+
+            combo_data = pd.concat((combo_data, in_house_data))
+
+        ##################################################################
+        # Get node features and edges
+        ##################################################################
+
+        # Get nodes features
+        # Get drug features. drug_nodes = drug fingerprint+one_hot. rec_id_to_idx_dict = recover id of drugs
+        drug_nodes, rec_id_to_idx_dict = self._get_nodes(combo_data)
+
+        # Get combo experiments
+        # get information for edges between drugs. one edge for each experiment on a cell_line. including cell_line fearuters
+        ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
+        ddi_edge_S_sum, ddi_edge_S_av, ddi_edge_S_max, cell_line_to_idx_dict, cell_line_features, \
+        ddi_is_in_house, ddi_edge_ri_col, ddi_edge_ri_row, ddi_edge_css_row, ddi_edge_css_col, \
+        ddi_edge_loewe_max, ddi_edge_loewe = self._get_ddi_edges(combo_data, rec_id_to_idx_dict)
+
+        ##################################################################
+        # Create data object
+        ##################################################################
+
+        data = Data(
+            x_drugs=torch.tensor(drug_nodes.to_numpy(), dtype=torch.float)
+        )
+
+        # Add ddi attributes to data
+        data.ddi_edge_idx = torch.tensor(ddi_edge_idx, dtype=torch.long)
+        data.ddi_edge_classes = torch.tensor(
+            ddi_edge_classes, dtype=torch.long)
+        data.ddi_edge_in_house = torch.tensor(
+            ddi_is_in_house, dtype=torch.long)
+        data.cell_line_to_idx_dict = cell_line_to_idx_dict
+        data.rec_id_to_idx_dict = rec_id_to_idx_dict
+        # data.cell_line_features = cell_line_features
+        for attr in cell_line_features:
+            data[attr] = torch.tensor(
+                cell_line_features[attr], dtype=torch.float)
+            
+        
+
+        # Scores
+        data.ddi_edge_bliss_max = torch.tensor(
+            ddi_edge_bliss_max, dtype=torch.float)
+        data.ddi_edge_bliss_av = torch.tensor(
+            ddi_edge_bliss_av, dtype=torch.float)
+        data.ddi_edge_css_av = torch.tensor(ddi_edge_css_av, dtype=torch.float)
+        data.ddi_edge_S_av = torch.tensor(ddi_edge_S_av, dtype=torch.float)
+        data.ddi_edge_S_max = torch.tensor(ddi_edge_S_max, dtype=torch.float)
+        data.ddi_edge_S_sum = torch.tensor(ddi_edge_S_sum, dtype=torch.float)
+        data.ddi_edge_loewe_max = torch.tensor(ddi_edge_loewe_max, dtype=torch.float)
+        data.ddi_edge_loewe = torch.tensor(ddi_edge_loewe, dtype=torch.float)
+        data.ddi_edge_css_col = torch.tensor(ddi_edge_css_col, dtype=torch.float)
+        data.ddi_edge_css_row = torch.tensor(ddi_edge_css_row, dtype=torch.float)
+        data.ddi_edge_ri_row = torch.tensor(ddi_edge_ri_row, dtype=torch.float)
+        data.ddi_edge_ri_col = torch.tensor(ddi_edge_ri_col, dtype=torch.float)
+
+
+        # Add attributes to data
+        data.fp_radius = self.fp_radius
+        data.fp_bits = self.fp_bits
+        data.study_name = self.study_name
+
+        torch.save(data, os.path.join(self.processed_paths,
+                   "processed", self.processed_file_name))
+
+        return data
+
+    def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
+
+        # Add drug index information to the df
+        data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(
+            lambda id: rec_id_to_idx_dict[id])
+        data_df["drug_col_idx"] = data_df['drug_col_recover_id'].apply(
+            lambda id: rec_id_to_idx_dict[id])
+
+        cell_line_features, cell_line_list = self._get_cell_features(data_df)
+        data_df = data_df[data_df['cell_line_name'].apply(
+            lambda cl: cl in cell_line_list)]
+        # Get cell line dictionary
+        cell_line_to_idx_dict = dict((v, k)
+                                     for k, v in enumerate(cell_line_list))
+
+        # Add categorical encoding of cell lines
+        data_df = copy.deepcopy(data_df)  # To avoid pandas issue
+        data_df["cell_line_cat"] = data_df["cell_line_name"].apply(
+            lambda c: cell_line_to_idx_dict[c])
+
+        # Drug indices of combos
+        ddi_edge_idx = data_df[["drug_row_idx", "drug_col_idx"]].to_numpy().T
+        # Cell lines
+        ddi_edge_classes = data_df["cell_line_cat"].to_numpy()
+
+    
+        
+        # Scores
+        ddi_edge_bliss_max = data_df['synergy_bliss_max'].to_numpy()
+        ddi_edge_bliss_av = data_df['synergy_bliss'].to_numpy()
+        ddi_edge_css_av = data_df['css_ri'].to_numpy()
+        ddi_edge_S_sum = data_df['S_sum'].to_numpy()
+        ddi_edge_S_av = data_df['S_mean'].to_numpy()
+        ddi_edge_S_max = data_df['S_max'].to_numpy()
+        ddi_edge_loewe = data_df['synergy_loewe'].to_numpy()
+        ddi_edge_loewe_max = data_df['synergy_loewe_max'].to_numpy()
+        ddi_edge_css_col = data_df['css_col'].to_numpy()
+        ddi_edge_css_row = data_df['css_row'].to_numpy()
+        ddi_edge_ri_row = data_df['ri_row'].to_numpy()
+        ddi_edge_ri_col = data_df['ri_col'].to_numpy()
+
+        # Fix loewe synergy values
+        ddi_edge_loewe[ddi_edge_loewe=='\\N']=0
+        ddi_edge_loewe = ddi_edge_loewe.astype(np.float)
+
+
+        # Is in house
+        ddi_is_in_house = data_df['is_in_house'].to_numpy()
+
+        return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
+            ddi_edge_S_sum, ddi_edge_S_av, ddi_edge_S_max, cell_line_to_idx_dict, cell_line_features, ddi_is_in_house,\
+            ddi_edge_ri_col,ddi_edge_ri_row,ddi_edge_css_row,ddi_edge_css_col, ddi_edge_loewe_max,ddi_edge_loewe

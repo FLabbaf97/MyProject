@@ -363,3 +363,35 @@ class MyMLPPredictor(torch.nn.Module):
         elif isinstance(module, nn.LayerNorm):
             module.bias.data.zero_()
             module.weight.data.fill_(1.0)
+
+
+class MyClassification(torch.nn.Module):
+    def __init__(self, data, config):
+
+        super(MyClassification, self).__init__()
+
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device_type)
+        self.criterion = torch.nn.BCEWithLogitsLoss()
+        predictor_layers = config["predictor_layers"]
+        assert predictor_layers[-1] == 1
+        self.predictor = self.get_predictor(data, config, predictor_layers)
+
+    def forward(self, data, drug_drug_batch):
+        return self.predictor(data, drug_drug_batch)
+
+    def get_predictor(self, data, config, predictor_layers):
+        return config["predictor"](data, config, predictor_layers)
+
+    def loss(self, output, drug_drug_batch):
+        """
+        Loss function for the synergy prediction pipeline
+        :param output: output of the predictor
+        :param drug_drug_batch: batch of drug-drug combination examples
+        :return:
+        """
+        comb = output
+        ground_truth_scores = drug_drug_batch[2][:, None]
+        loss = self.criterion(comb, ground_truth_scores)
+
+        return loss

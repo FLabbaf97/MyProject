@@ -15,6 +15,7 @@ from ray.air.integrations.wandb import setup_wandb
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from data_loaders import CellGeneDataset, collate_fn
+from sklearn import metrics
 
 
 
@@ -22,7 +23,7 @@ from data_loaders import CellGeneDataset, collate_fn
 # Epoch loops
 ########################################################################################################################
 
-def train_epoch(data, loader, model, optim, scheduler=None):
+def train_epoch(data, loader, model, optim, scheduler=None, task="regression"):
 
     model.train()
 
@@ -48,22 +49,31 @@ def train_epoch(data, loader, model, optim, scheduler=None):
         epoch_loss += loss.item()
     if scheduler:
         scheduler.step()
-    if (len(set(all_mean_preds)) > 2):
-        epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
-    else:
-        epoch_comb_r_squared = -1
-    epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
-    summary_dict = {
-        "loss_mean": epoch_loss / num_batches,
-        "comb_r_squared": epoch_comb_r_squared,
-        'pearson_r': epoch_pearson_r
-    }
+    if(task == 'regression'):
+        if (len(set(all_mean_preds)) > 2):
+            epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
+        else:
+            epoch_comb_r_squared = -1
+        epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
+        summary_dict = {
+            "loss_mean": epoch_loss / num_batches,
+            "comb_r_squared": epoch_comb_r_squared,
+            'pearson_r': epoch_pearson_r
+        }
+    elif(task == 'classification'):
+        summary_dict = {
+            "loss": epoch_loss / num_batches,
+            "Accuracy": metrics.accuracy_score,
+            "AUROC": metrics.roc_auc_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
+            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds))))
+        }
+
     # print("Training", summary_dict)
 
     return summary_dict 
 
 
-def eval_epoch(data, loader, model):
+def eval_epoch(data, loader, model, task='regressoin'):
     model.eval()
 
     epoch_loss = 0
@@ -89,12 +99,20 @@ def eval_epoch(data, loader, model):
             all_mean_preds, all_targets).rvalue**2
         epoch_spear = spearmanr(all_targets, all_mean_preds).correlation
         epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
-    summary_dict = {
-        "loss_mean": epoch_loss / num_batches,
-        "comb_r_squared": epoch_comb_r_squared,
-        'pearson_r': epoch_pearson_r,
-        "spearman": epoch_spear
-    }
+    if(task == 'regression'):
+        summary_dict = {
+            "loss_mean": epoch_loss / num_batches,
+            "comb_r_squared": epoch_comb_r_squared,
+            'pearson_r': epoch_pearson_r,
+            "spearman": epoch_spear
+        }
+    elif (task == 'classification'):
+        summary_dict = {
+            "loss_mean": epoch_loss / num_batches,
+            "Accuracy": metrics.accuracy_score,
+            "AUROC": metrics.roc_auc_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
+            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds))))
+        }
 
     # print("Testing", summary_dict, '\n')
 
@@ -129,19 +147,16 @@ class BasicTrainer(tune.Trainable):
             study_name=config["study_name"],
             AE_config=AE_config,
             other_config = config
-            # fp_bits=config["fp_bits"],
-            # fp_radius=config["fp_radius"],
-            # cell_line=config["cell_line"],
-            # in_house_data=config["in_house_data"],
-            # rounds_to_include=config["rounds_to_include"],
-            # duplicate_data=config['duplicate_data'],
-            # one_hot=config['one_hot']
         )
-
-
         # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
         self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config) # duplication happen here
 
+        if 'task' in config.keys():
+            self.task=config['task']
+            if 'threshold' in config.keys():
+                self.threshold = config['threshold']
+        else:
+            self.taks = 'regression'
         self.data = dataset.data.to(self.device)
         
         # If a score is the target, we store it in the ddi_edge_response attribute of the data object
@@ -150,8 +165,16 @@ class BasicTrainer(tune.Trainable):
                 "bliss_max": self.data.ddi_edge_bliss_max,
                 "bliss_av": self.data.ddi_edge_bliss_av,
                 "css_av": self.data.ddi_edge_css_av,
+                "loewe": self.data.ddi_edge_loewe,
+                "S_max": self.data.ddi_edge_S_max,
+                "S_av": self.data.ddi_edge_S_av,
+                "S_sum": self.data.ddi_edge_S_sum,
             }
-            self.data.ddi_edge_response = possible_target_dicts[config["target"]]
+            if self.task == 'regression':
+                self.data.ddi_edge_response = possible_target_dicts[config["target"]]
+            else: 
+                self.data.ddi_edge_response = torch.where(
+                    possible_target_dicts[config["target"]] > self.threshold, 1, 0).type(torch.float32)
         if "cell_feature" in config.keys():
             assert config['cell_feature'] in ['meta', 'one_hot', 'embd_mut', 'embd_cnv' , 'embd_expr' , 'pca']
             self.data.cell_line_features = self.data['cell_'+ config['cell_feature']]
@@ -216,10 +239,7 @@ class BasicTrainer(tune.Trainable):
         self.eval_epoch = config["eval_epoch"]
 
         self.patience = 0
-        self.max_eval_r_squared = -1
-        self.max_eval_spearman = -1
-        self.test_spearman_for_max_eval_spearman = -1
-        self.test_R2_for_max_eval_spearman = -1
+        self.best_mean_loss = -1
 
         if wandb and config['use_tune']:
             self.is_wandb = True
@@ -232,7 +252,7 @@ class BasicTrainer(tune.Trainable):
         self.results = pd.DataFrame()
 
         test_metrics, _, test_pred, test_target = self.eval_epoch(
-            self.data, self.test_loader, self.model)
+            self.data, self.test_loader, self.model, task=self.task)
 
         train_metrics = self.train_epoch(
             self.data,
@@ -240,9 +260,10 @@ class BasicTrainer(tune.Trainable):
             self.model,
             self.optim,
             self.scheduler,
+            task=self.task
         )
         eval_metrics, _, eval_pred, eval_target = self.eval_epoch(
-            self.data, self.valid_loader, self.model)
+            self.data, self.valid_loader, self.model, task=self.task)
 
         
         eval_metrics = [("eval/" + k, v) for k, v in eval_metrics.items()]
@@ -250,41 +271,43 @@ class BasicTrainer(tune.Trainable):
         test_metrics = [("test/" + k, v) for k, v in test_metrics.items()]
 
         metrics = dict(train_metrics + eval_metrics + test_metrics)
-
-        metrics["training_iteration"] = self.training_it
-        self.training_it += 1
-
         # Compute patience
         # if metrics['eval/comb_r_squared'] > self.max_eval_r_squared:
         #     self.patience = 0
         #     self.max_eval_r_squared = metrics['eval/comb_r_squared']
         # else:
         #     self.patience += 1
-        if metrics['eval/spearman'] > self.max_eval_spearman:
+        if metrics['eval/loss_mean'] > self.best_mean_loss:
+            # save results for furthur analysis
             self.results['target'] = test_target + eval_target
             self.results['prediction'] = test_pred+ eval_pred
             if ~os.path.exists('saved/results/' + self.trial_id):
                 os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
             self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
+            # save current loss and metrics
             self.patience = 0
-            self.max_eval_spearman = metrics['eval/spearman']
-            self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
-            self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
-            
+            self.best_mean_loss = metrics['eval/loss_mean']
+            # self.max_eval_spearman = metrics['eval/spearman']
+            # self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
+            # self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
+
+            best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
+            metrics = {**metrics, **best_metrics}            
         else:
             self.patience += 1
-
+        
+        metrics["training_iteration"] = self.training_it
+        self.training_it += 1
         last_lr = self.scheduler.optimizer.param_groups[0]['lr']
         print ("last lr: ", last_lr)
-        metrics['test_for_max_eval_spearman'] = self.test_spearman_for_max_eval_spearman
-        metrics["test_R2_for_max_eval_spearman"] = self.test_R2_for_max_eval_spearman
-        metrics['max_eval_spearman'] = self.max_eval_spearman
+        # metrics['test_for_max_eval_spearman'] = self.test_spearman_for_max_eval_spearman
+        # metrics["test_R2_for_max_eval_spearman"] = self.test_R2_for_max_eval_spearman
+        # metrics['max_eval_spearman'] = self.max_eval_spearman
         metrics['current_lr'] = last_lr
         metrics['patience'] = self.patience
         metrics['all_space_explored'] = 0
         if self.is_wandb:
             self.wandb.log(metrics)
-        
         return metrics
 
     def save_checkpoint(self, checkpoint_dir):
@@ -712,84 +735,3 @@ class DAETrainer(tune.Trainable):
         print('saving best model')
         torch.save(self.best_model_wts, self.save_path+self.trial_name+'.ae')
 
-
-
-# def train_DAE_model(model, data_loaders={}, optimizer=None, loss_function=None, n_epochs=100, scheduler=None, load=False, config={}, save_path="", eval=False):
-
-#     if (load != False):
-#         if (os.path.exists(save_path)):
-#             model.load_state_dict(torch.load(save_path))
-#             return model, 0
-#         else:
-#             print("Warning: Failed to load existing file, proceed to the trainning process.")
-
-#     # dataset_sizes = {
-#     #     x: data_loaders[x].dataset.tensors[0].shape[0] for x in ['train', 'val']}
-#     loss_train = {}
-
-#     best_model_wts = copy.deepcopy(model.state_dict())
-#     best_loss = np.inf
-#     phases = ['val'] if eval else ['val', 'train']
-#     for epoch in range(n_epochs):
-#         print('Epoch {}/{}'.format(epoch, n_epochs - 1))
-#         print('-' * 10)
-#         # Each epoch has a training and validation phase
-#         for phase in phases:
-#             if phase == 'train':
-#                 #optimizer = scheduler(optimizer, epoch)
-#                 model.train()  # Set model to training mode
-#             else:
-#                 model.eval()  # Set model to evaluate mode
-
-#             running_loss = []
-
-#             # n_iters = len(data_loaders[phase])
-
-#             # Iterate over data.
-#             # for data in data_loaders[phase]:
-#             for batchidx, (x, meta, idx) in enumerate(data_loaders[phase]):
-
-#                 z = x
-#                 y = np.random.binomial(
-#                     1, config["noise"], (z.shape[0], z.shape[1]))
-#                 z[np.array(y, dtype=bool), ] = 0
-#                 x.requires_grad_(True)
-#                 # encode and decode
-#                 output, embeded = model(z)
-#                 # compute loss
-#                 loss = loss_function(output, x)
-
-#                 # zero the parameter (weight) gradients
-#                 optimizer.zero_grad()
-
-#                 # backward + optimize only if in training phase
-#                 if phase == 'train':
-#                     loss.backward()
-#                     # update the weights
-#                     optimizer.step()
-
-#                 # print loss statistics
-#                 running_loss.append(loss.item())
-
-#             epoch_loss = np.mean(running_loss)
-
-#             # print(epoch_loss)
-#             if phase == 'train':
-#                 scheduler.step()
-
-#             last_lr = scheduler.optimizer.param_groups[0]['lr']
-#             loss_train[epoch, phase] = epoch_loss
-#             print('{} Loss: {:.8f}. Learning rate = {}'.format(
-#                 phase, epoch_loss, last_lr))
-
-#             if phase == 'val' and epoch_loss < best_loss:
-#                 best_loss = epoch_loss
-#                 best_model_wts = copy.deepcopy(model.state_dict())
-#     # Select best model wts
-#     if ~os.path.exists(save_path):
-#         os.makedirs(save_path, exist_ok=True)
-#         print("Warning: " ,save_path, " path not exist, creating path")
-#     torch.save(best_model_wts, save_path+'AE')
-#     model.load_state_dict(best_model_wts)
-
-#     return model, loss_train
