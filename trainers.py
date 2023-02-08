@@ -60,7 +60,7 @@ def train_epoch(data, loader, model, optim, scheduler=None):
     }
     # print("Training", summary_dict)
 
-    return summary_dict
+    return summary_dict 
 
 
 def eval_epoch(data, loader, model):
@@ -100,7 +100,7 @@ def eval_epoch(data, loader, model):
 
     all_out = torch.cat(all_out)
 
-    return summary_dict, all_out
+    return summary_dict, all_out, all_mean_preds, all_targets
 
 def calculate_pair_distance(out):
     # This function supposed to calculate pain distance of a drug pair and their complement.
@@ -229,8 +229,9 @@ class BasicTrainer(tune.Trainable):
             self.is_wandb = False
 
     def step(self):
+        self.results = pd.DataFrame()
 
-        test_metrics, _ = self.eval_epoch(
+        test_metrics, _, test_pred, test_target = self.eval_epoch(
             self.data, self.test_loader, self.model)
 
         train_metrics = self.train_epoch(
@@ -240,7 +241,7 @@ class BasicTrainer(tune.Trainable):
             self.optim,
             self.scheduler,
         )
-        eval_metrics, _ = self.eval_epoch(
+        eval_metrics, _, eval_pred, eval_target = self.eval_epoch(
             self.data, self.valid_loader, self.model)
 
         
@@ -260,10 +261,16 @@ class BasicTrainer(tune.Trainable):
         # else:
         #     self.patience += 1
         if metrics['eval/spearman'] > self.max_eval_spearman:
+            self.results['target'] = test_target + eval_target
+            self.results['prediction'] = test_pred+ eval_pred
+            if ~os.path.exists('saved/results/' + self.trial_id):
+                os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
+            self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
             self.patience = 0
             self.max_eval_spearman = metrics['eval/spearman']
             self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
             self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
+            
         else:
             self.patience += 1
 
