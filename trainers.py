@@ -1,7 +1,7 @@
 import torch
 import os
 import copy
-from torch import optim
+from torch import inf, optim
 from torch.utils.data import DataLoader
 from utils import get_tensor_dataset
 from torch.utils.data import random_split
@@ -239,7 +239,7 @@ class BasicTrainer(tune.Trainable):
         self.eval_epoch = config["eval_epoch"]
 
         self.patience = 0
-        self.best_mean_loss = -1
+        self.best_mean_loss = float(inf)
 
         if wandb and config['use_tune']:
             self.is_wandb = True
