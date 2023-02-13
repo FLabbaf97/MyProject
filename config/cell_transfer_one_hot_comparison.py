@@ -53,7 +53,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'compare cell_line transfer (to MCF7) with and without cell features'
+    "wandb_group": 'cell-transfer (to MCF7), dropout, drug_embed_len, cell features'
 }
 
 predictor_config = {
@@ -74,7 +74,9 @@ predictor_config = {
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
-    "drug_embed_len": tune.grid_search([128,64])
+    "drug_embed_len": tune.grid_search([128,64]),
+    'first_layer_dropout': tune.grid_search([0.2, 0.5]),
+    'middle_layer_dropout': tune.grid_search([0.2, 0.5]),
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed_1383_15806.csv",

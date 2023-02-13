@@ -31,7 +31,7 @@ pipeline_config = {
     "is_wandb": True,
     'task': 'classification',
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([1,]),
+    "seed": tune.grid_search([1,2,3]),
     # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
@@ -54,7 +54,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'classification for loewe on all data'
+    "wandb_group": 'classification for different dropout'
 }
 
 predictor_config = {
@@ -69,7 +69,9 @@ predictor_config = {
     # Computation on the sum of the two drug embeddings for the last n layers
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
-    "drug_embed_len": tune.grid_search([128,64]),
+    "drug_embed_len": 128,
+    'first_layer_dropout': tune.grid_search([0.2,0.5]),
+    'middle_layer_dropout': tune.grid_search([0.2, 0.5]),
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed_1383_15806.csv",
@@ -105,7 +107,7 @@ dataset_config = {
     "fp_radius": 2,
     'duplicate_data': True,
     'drug_one_hot': False,
-    'cell_feature': tune.grid_search(['one_hot','embd_expr'])
+    'cell_feature': 'embd_expr'
 }
 
 ########################################################################################################################
