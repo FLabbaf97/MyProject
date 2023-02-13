@@ -7,4 +7,4 @@ data/
 data/raw/*
 data/processed/*
 wandb/
-
+figs/
