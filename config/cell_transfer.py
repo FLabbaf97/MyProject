@@ -53,7 +53,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'cell-transfer (to MCF7), dropout, drug_embed_len, cell features'
+    "wandb_group": 'cell-transfer (to MCF7), dropout, drug_embed_len'
 }
 
 predictor_config = {
@@ -105,13 +105,13 @@ dataset_config = {
     "cell_lines_in_test":['MCF7'],
     "split_valid_train": "cell_line_level",
     "cell_line": None,  # 'PC-3',
-    "target": tune.grid_search(["bliss_max", "bliss_av", "css_av"]),
+    "target": tune.grid_search(["bliss_av"]),
     # 'target': 'bliss_max',
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
     'drug_one_hot': True,
-    'cell_feature': tune.grid_search(['one_hot', 'embd_expr']),
+    'cell_feature': tune.grid_search(['embd_expr']),
 }
 
 ########################################################################################################################
