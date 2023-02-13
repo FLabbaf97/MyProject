@@ -277,10 +277,10 @@ class BasicTrainer(tune.Trainable):
         #     self.max_eval_r_squared = metrics['eval/comb_r_squared']
         # else:
         #     self.patience += 1
-        if metrics['eval/loss_mean'] > self.best_mean_loss:
+        if metrics['eval/loss_mean'] < self.best_mean_loss:
             # save results for furthur analysis
             self.results['target'] = test_target + eval_target
-            self.results['prediction'] = test_pred+ eval_pred
+            self.results['prediction'] = test_pred + eval_pred
             if ~os.path.exists('saved/results/' + self.trial_id):
                 os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
             self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
@@ -291,8 +291,8 @@ class BasicTrainer(tune.Trainable):
             # self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
             # self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
 
-            best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
-            metrics = {**metrics, **best_metrics}            
+            # best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
+            # metrics = {**metrics, **best_metrics}            
         else:
             self.patience += 1
         
