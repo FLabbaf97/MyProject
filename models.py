@@ -1,31 +1,10 @@
 import torch
-from torch import nn
+from torch import dropout, nn
 from torch import Tensor
 
 #import scipy.io as sio
 from copy import deepcopy
 
-#########################################################################
-# Modules
-#########################################################################
-
-
-class LinearModule(nn.Linear):
-    def __init__(self, in_features, out_features, bias=True):
-        super(LinearModule, self).__init__(in_features, out_features, bias)
-
-    def forward(self, input):
-        x, cell_line = input[0], input[1]
-        return [super().forward(x), cell_line]
-
-
-class ReLUModule(nn.ReLU):
-    def __init__(self):
-        super(ReLUModule, self).__init__()
-
-    def forward(self, input):
-        x, cell_line = input[0], input[1]
-        return [super().forward(x), cell_line]
 
 #########################################################################
 # An Autoencoder to encode gene expression of cell-lines
@@ -288,13 +267,16 @@ class MyMLPPredictor(torch.nn.Module):
             layers_before_cell,
             0,
             data.x_drugs.shape[1],
-            self.drug_embed_hidden_layers[0]
+            self.drug_embed_hidden_layers[0],
+            dropout = config['first_layer_dropout']
+
         )
         layers_before_cell = self.add_layer(
             layers_before_cell,
             0,
             self.drug_embed_hidden_layers[0],
-            self.drug_embed_len
+            self.drug_embed_len,
+            dropout = config['middle_layer_dropout']
         )
 
         # Build last layers (after addition of the two embeddings)
@@ -302,31 +284,33 @@ class MyMLPPredictor(torch.nn.Module):
             layers_after_cell,
             0,
             self.drug_embed_len*2+self.cell_embed_len,
-            self.layer_dims[0]
+            self.layer_dims[0],
+            dropout=config['first_layer_dropout']
         )
         for i in range(0,len(self.layer_dims)-1):
             layers_after_cell = self.add_layer(
                 layers_after_cell,
                 i,
                 self.layer_dims[i],
-                self.layer_dims[i + 1]
+                self.layer_dims[i + 1],
+                dropout=config['middle_layer_dropout'] if i!=len(self.layer_dims)-1 else 0
             )
 
         self.before_merge_mlp = torch.nn.Sequential(*layers_before_cell)
         self.after_merge_mlp = torch.nn.Sequential(*layers_after_cell)
         # self.apply(self._init_weights)
-
+ 
     def forward(self, data, drug_drug_batch):
         h_drug_1, h_drug_2, cell_lines = self.get_batch(data, drug_drug_batch)
         cell_features = data.cell_line_features[cell_lines]
 
         # Apply before merge MLP
-        h_1 = self.before_merge_mlp([h_drug_1, cell_lines])[0]
-        h_2 = self.before_merge_mlp([h_drug_2, cell_lines])[0]
+        h_1 = self.before_merge_mlp(h_drug_1)
+        h_2 = self.before_merge_mlp(h_drug_2)
 
         concatinated = torch.cat((h_1, h_2, cell_features), 1)
 
-        comb = self.after_merge_mlp([concatinated, cell_lines])[0]
+        comb = self.after_merge_mlp(concatinated)
 
         return comb
 
@@ -342,18 +326,17 @@ class MyMLPPredictor(torch.nn.Module):
 
         return h_drug_1, h_drug_2, cell_lines
 
-    def add_layer(self, layers, i, dim_i, dim_i_plus_1, activation=None):
-        layers.extend(self.linear_layer(i, dim_i, dim_i_plus_1))
+    def add_layer(self, layers, i, dim_i, dim_i_plus_1, activation=None, dropout=0):
+        layers.append(nn.Linear(dim_i, dim_i_plus_1))
+        if (dropout != 0):
+            if i != len(self.layer_dims) - 2:
+                layers.append(nn.Dropout(dropout))
+
         if (activation):
             layers.append(activation())
-
         if i != len(self.layer_dims) - 2:
-            layers.append(ReLUModule())
-
+            layers.append(nn.ReLU())
         return layers
-
-    def linear_layer(self, i, dim_i, dim_i_plus_1):
-        return [LinearModule(dim_i, dim_i_plus_1)]
 
     def _init_weights(self, module):
         if isinstance(module, nn.Embedding):
