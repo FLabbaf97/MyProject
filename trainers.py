@@ -54,18 +54,20 @@ def train_epoch(data, loader, model, optim, scheduler=None, task="regression"):
             epoch_comb_r_squared = stats.linregress(all_mean_preds, all_targets).rvalue**2
         else:
             epoch_comb_r_squared = -1
-        epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
+        # epoch_pearson_r = pearsonr(all_targets, all_mean_preds).statistic
         summary_dict = {
             "loss_mean": epoch_loss / num_batches,
             "comb_r_squared": epoch_comb_r_squared,
-            'pearson_r': epoch_pearson_r
+            'mse': metrics.mean_squared_error(all_targets, all_mean_preds)
+            # 'pearson_r': epoch_pearson_r
         }
     elif(task == 'classification'):
         summary_dict = {
-            "loss": epoch_loss / num_batches,
+            "loss_mean": epoch_loss / num_batches,
             "Accuracy": metrics.accuracy_score,
             "AUROC": metrics.roc_auc_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
-            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds))))
+            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
+            'mse': metrics.mean_squared_error(all_targets,all_mean_preds)
         }
 
     # print("Training", summary_dict)
@@ -103,15 +105,18 @@ def eval_epoch(data, loader, model, task='regressoin'):
         summary_dict = {
             "loss_mean": epoch_loss / num_batches,
             "comb_r_squared": epoch_comb_r_squared,
-            'pearson_r': epoch_pearson_r,
-            "spearman": epoch_spear
+            "spearman": epoch_spear,
+            # 'pearson_r': epoch_pearson_r,
+            'mse': metrics.mean_squared_error(all_targets, all_mean_preds),
+            
         }
     elif (task == 'classification'):
         summary_dict = {
             "loss_mean": epoch_loss / num_batches,
             "Accuracy": metrics.accuracy_score,
             "AUROC": metrics.roc_auc_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
-            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds))))
+            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
+            'mse': metrics.mean_squared_error(all_targets,all_mean_preds)
         }
 
     # print("Testing", summary_dict, '\n')
@@ -138,6 +143,11 @@ class BasicTrainer(tune.Trainable):
         self.device = torch.device(device_type)
         self.training_it = 0
 
+        # set a group of initial values for metrics to monitor progress later
+        self.best_mean_loss = float('inf')
+        self.best_R2 = 0
+        self.best_pearson = -1
+
         # Initialize dataset
         AE_config = {}
         if config['load_ae']:
@@ -150,13 +160,12 @@ class BasicTrainer(tune.Trainable):
         )
         # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
         self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config) # duplication happen here
-
+        
+        self.task = 'regression' # default value
         if 'task' in config.keys():
             self.task=config['task']
             if 'threshold' in config.keys():
                 self.threshold = config['threshold']
-        else:
-            self.taks = 'regression'
         self.data = dataset.data.to(self.device)
         
         # If a score is the target, we store it in the ddi_edge_response attribute of the data object
@@ -197,7 +206,7 @@ class BasicTrainer(tune.Trainable):
 
         self.valid_loader = DataLoader(
             valid_ddi_dataset,
-            batch_size=1024
+            batch_size=config["batch_size"]
         )
 
         # Test loader
@@ -205,7 +214,7 @@ class BasicTrainer(tune.Trainable):
 
         self.test_loader = DataLoader(
             test_ddi_dataset,
-            batch_size=1024
+            batch_size=config["batch_size"]
         )
 
         # Initialize model
@@ -239,7 +248,6 @@ class BasicTrainer(tune.Trainable):
         self.eval_epoch = config["eval_epoch"]
 
         self.patience = 0
-        self.best_mean_loss = float('inf')
 
         if wandb and config['use_tune']:
             self.is_wandb = True
@@ -251,9 +259,6 @@ class BasicTrainer(tune.Trainable):
     def step(self):
         self.results = pd.DataFrame()
 
-        test_metrics, _, test_pred, test_target = self.eval_epoch(
-            self.data, self.test_loader, self.model, task=self.task)
-
         train_metrics = self.train_epoch(
             self.data,
             self.train_loader,
@@ -264,45 +269,61 @@ class BasicTrainer(tune.Trainable):
         )
         eval_metrics, _, eval_pred, eval_target = self.eval_epoch(
             self.data, self.valid_loader, self.model, task=self.task)
-
+        test_metrics, _, test_pred, test_target = self.eval_epoch(
+            self.data, self.test_loader, self.model, task=self.task)
         
         eval_metrics = [("eval/" + k, v) for k, v in eval_metrics.items()]
         train_metrics = [("train/" + k, v) for k, v in train_metrics.items()]
         test_metrics = [("test/" + k, v) for k, v in test_metrics.items()]
 
         metrics = dict(train_metrics + eval_metrics + test_metrics)
-        # Compute patience
-        # if metrics['eval/comb_r_squared'] > self.max_eval_r_squared:
-        #     self.patience = 0
-        #     self.max_eval_r_squared = metrics['eval/comb_r_squared']
-        # else:
-        #     self.patience += 1
-        if metrics['eval/loss_mean'] < self.best_mean_loss:
-            # save results for furthur analysis
-            self.results['target'] = test_target + eval_target
-            self.results['prediction'] = test_pred + eval_pred
-            if ~os.path.exists('saved/results/' + self.trial_id):
-                os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
-            self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
-            # save current loss and metrics
-            self.patience = 0
-            self.best_mean_loss = metrics['eval/loss_mean']
-            # self.max_eval_spearman = metrics['eval/spearman']
-            # self.test_spearman_for_max_eval_spearman = metrics['test/spearman']
-            # self.test_R2_for_max_eval_spearman = metrics['test/comb_r_squared']
+        
+        if(self.task == 'regression'):
+            if metrics['eval/comb_r_squared'] > self.best_R2:
+                self.patience = 0
+                self.best_R2 = metrics['eval/comb_r_squared']
+                self.test_R2_for_best_model = metrics['test/comb_r_squared']
+                self.test_spearman_for_best_model = metrics['test/spearman']
+                self.eval_sperman_for_best_model = metrics['eval/spearman']
+                self.eval_mse_for_best_model = metrics['eval/mse']
 
-            # best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
-            # metrics = {**metrics, **best_metrics}            
-        else:
-            self.patience += 1
+                # save results for furthur analysis
+                # self.results['target'] = test_target + eval_target
+                # self.results['prediction'] = test_pred + eval_pred
+                # if ~os.path.exists('saved/results/' + self.trial_id):
+                    # os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
+                # self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
+                # best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
+                # metrics = {**metrics, **best_metrics}
+            else:
+                self.patience += 1
+            metrics['eval_best_R2'] = self.best_R2 
+            metrics['test_R2_for_best_model'] = self.test_R2_for_best_model 
+            metrics['test_spearman_for_best_model'] = self.test_spearman_for_best_model 
+            metrics['eval_sperman_for_best_model'] = self.eval_sperman_for_best_model 
+            metrics['eval_mse_for_best_model'] = self.eval_mse_for_best_model
+
+        if (self.task == 'classification'):    
+            if metrics['eval/loss_mean'] < self.best_mean_loss:
+                self.patience = 0
+                self.best_mean_loss = metrics['eval/loss_mean']
+
+                best_metrics = dict([("for_best_loss/" + k, v) for k, v in metrics.items()])
+                metrics = {**metrics, **best_metrics}
+
+                # save results for furthur analysis
+                # self.results['target'] = test_target + eval_target
+                # self.results['prediction'] = test_pred + eval_pred
+                # if ~os.path.exists('saved/results/' + self.trial_id):
+                    # os.makedirs('saved/results/' + self.trial_id, exist_ok=True)
+                # self.results.to_csv('saved/results/' + self.trial_id+'/result.csv')
+                # save current loss and metrics
+            else:
+                self.patience += 1
         
         metrics["training_iteration"] = self.training_it
         self.training_it += 1
         last_lr = self.scheduler.optimizer.param_groups[0]['lr']
-        print ("last lr: ", last_lr)
-        # metrics['test_for_max_eval_spearman'] = self.test_spearman_for_max_eval_spearman
-        # metrics["test_R2_for_max_eval_spearman"] = self.test_R2_for_max_eval_spearman
-        # metrics['max_eval_spearman'] = self.max_eval_spearman
         metrics['current_lr'] = last_lr
         metrics['patience'] = self.patience
         metrics['all_space_explored'] = 0
