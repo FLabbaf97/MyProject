@@ -31,13 +31,13 @@ pipeline_config = {
     "is_wandb": True,
     'task': 'regression',
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
-    "seed": tune.grid_search([1,2,3,4,5]),
+    "seed": tune.grid_search([1,2,3]),
     # "seed": 2,
     # Optimizer config
     "lr": 1e-2,
     # "lr": tune.grid_search([1e-2, 1e-3]),
-    "weight_decay": tune.grid_search([1e-2,1e-3,1e-4]),
-    # "weight_decay": 1e-2,
+    # "weight_decay": tune.grid_search([1e-2,1e-3,1e-4]),
+    "weight_decay": 1e-2,
     "batch_size": 256,
     # "batch_size": tune.grid_search([512,256,128]),
     # 'lr_step': tune.grid_search([5e-1, 1e-1]),
