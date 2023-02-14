@@ -968,3 +968,40 @@ class DrugCombForDataAnalysis(DrugCombMatrixWithAE):
         return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
             ddi_edge_S_sum, ddi_edge_S_av, ddi_edge_S_max, cell_line_to_idx_dict, cell_line_features, ddi_is_in_house,\
             ddi_edge_ri_col,ddi_edge_ri_row,ddi_edge_css_row,ddi_edge_css_col, ddi_edge_loewe_max,ddi_edge_loewe
+
+
+class DrugCombForDataAnalysisHQ(DrugCombForDataAnalysis):
+    def __init__(
+            self,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
+            study_name="",
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
+            AE_config={},
+            # one_hot=True
+            other_config={}
+    ):
+        self.quality = 'hight'
+        self.study_name = "" # study can't be determined. If you need to determine study you should use 
+        super().__init__(self.study_name, AE_config, other_config)
+
+class DrugCombForDataAnalysisOffQ(DrugCombForDataAnalysis):
+    def __init__(
+            self,
+            # fp_bits=1024,
+            # fp_radius=4,
+            # cell_line=None,
+            study_name="",
+            # in_house_data="without",
+            # rounds_to_include=(),
+            # duplicate_data=False,
+            AE_config={},
+            # one_hot=True
+            other_config={}
+    ):
+        self.study_name = "" # study can't be determined. If you need to determine study you should use 
+        self.quality = 'hight'
+        super().__init__(self.study_name, AE_config, other_config)
