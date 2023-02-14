@@ -99,7 +99,7 @@ dataset_config = {
     # "cell_lines_in_test": ['MCF7'],
     "split_valid_train": "pair_level",
     "cell_line": None,  # 'PC-3',
-    "target": tune.grid_search(["bliss_av", 'CSS']),
+    "target": tune.grid_search(["bliss_av", 'css_av']),
     # 'target': 'bliss_max',
     "fp_bits": 1024,
     "fp_radius": 2,
