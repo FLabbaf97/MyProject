@@ -4,7 +4,7 @@ from trainers import train_epoch, eval_epoch, BasicTrainer
 from utils import get_project_root
 from models import MyMLPPredictor
 from models import MyBaseline
-from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE, DrugCombForDataAnalysis
 import sys
 import os
 
@@ -29,6 +29,7 @@ sys.path.append(parent)
 pipeline_config = {
     "use_tune": True,
     "is_wandb": True,
+    'task': 'regression',
     "num_epoch_without_tune": 500,  # Used only if "use_tune" == False
     "seed": tune.grid_search([1,2,3,4,5]),
     # "seed": 2,
@@ -95,7 +96,7 @@ model_config = {
 }
 
 dataset_config = {
-    "dataset": DrugCombMatrixWithAE,
+    "dataset": DrugCombForDataAnalysis,
     "study_name": 'ALMANAC',
     "in_house_data": 'without',
     "rounds_to_include": [],
@@ -110,7 +111,7 @@ dataset_config = {
     "fp_bits": 1024,
     "fp_radius": 2,
     'duplicate_data': True,
-    'drug_one_hot': True,
+    'drug_one_hot': False,
     'cell_feature': tune.grid_search(['embd_expr']),
 }
 
