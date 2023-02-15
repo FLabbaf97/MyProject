@@ -4,7 +4,7 @@ from trainers import train_epoch, eval_epoch, BasicTrainer
 from utils import get_project_root
 from models import MyMLPPredictor
 from models import MyBaseline
-from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE, DrugCombForDataAnalysis, DrugCombForDataAnalysisHQ, DrugCombForDataAnalysisOffQ
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE,DrugCombMatrixWithAE_HQFilter, DrugCombForDataAnalysis, DrugCombForDataAnalysisHQ, DrugCombForDataAnalysisOffQ
 import sys
 import os
 
@@ -47,7 +47,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'multi-cell with fixed dropout; datasets'
+    "wandb_group": 'multi-cell with fixed dropout; datasets=DrugCombMatrixWithAE_HQFilter'
 }
 
 predictor_config = {
@@ -89,7 +89,7 @@ model_config = {
 }
 
 dataset_config = {
-    "dataset": tune.grid_search([DrugCombForDataAnalysis, DrugCombForDataAnalysisOffQ, DrugCombForDataAnalysisHQ]),
+    "dataset": tune.grid_search([DrugCombMatrixWithAE_HQFilter]),
     "study_name": 'ALMANAC',  # this will apply only for DrugCombForDataAnalysis
     "in_house_data": 'without',
     "rounds_to_include": [],
@@ -99,7 +99,7 @@ dataset_config = {
     # "cell_lines_in_test": ['MCF7'],
     "split_valid_train": "pair_level",
     "cell_line": None,  # 'PC-3',
-    "target": tune.grid_search(["bliss_av", 'css_av']),
+    "target": tune.grid_search(["bliss_av"]),
     # 'target': 'bliss_max',
     "fp_bits": 1024,
     "fp_radius": 2,
