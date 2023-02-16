@@ -685,61 +685,6 @@ class DrugCombMatrixWithAE(DrugCombMatrix):
                             }
         return cell_line_features, cell_line_list
 
-    # def _get_ddi_edges(self, data_df, rec_id_to_idx_dict):
-    #     # Add drug index information to the df
-    #     data_df["drug_row_idx"] = data_df['drug_row_recover_id'].apply(
-    #         lambda id: rec_id_to_idx_dict[id])
-    #     data_df["drug_col_idx"] = data_df['drug_col_recover_id'].apply(
-    #         lambda id: rec_id_to_idx_dict[id])
-
-    #     # Get list of cell lines
-    #     cell_line_list = list(data_df["cell_line_name"].unique())
-    #     cell_line_list.sort()
-
-    #     # Retrieve cell line features
-    #     # gene_expr, gene_mutation, gene_cn, metadata = rsv.get_cell_line_features(cell_line_list)
-    #     cell_features = pd.read_csv(self.cell_data_file).set_index('cell_line_name')
-    #     name_dict=find_cell_lines(cell_line_list, cell_features)
-    #     gene_expr = cell_features.loc[name_dict.keys()].drop(columns=['cancer_type', 'disease', 'tissue'])
-    #     # meta_transformed = self._transform_cell_line_metadata_df(meta)
-    #     meta = cell_features.loc[name_dict.keys()][['cancer_type', 'disease', 'tissue']]
-    #     gene_expr = gene_expr.rename(index=name_dict)
-    #     meta = meta.rename(index=name_dict)
-
-    #     # Run encoder on gene expressions:
-    #     cell_line_features = []
-    #     with torch.no_grad():
-    #         decoded, embeded = self.encoder(
-    #             torch.tensor(gene_expr.values).float())
-    #     cell_line_features = embeded
-    #     # Restrict to cell lines with features
-    #     cell_line_list = list(gene_expr.index)
-    #     data_df = data_df[data_df['cell_line_name'].apply(
-    #         lambda cl: cl in name_dict.values())]
-
-    #     # Get cell line dictionary
-    #     cell_line_to_idx_dict = dict((v, k)
-    #                                  for k, v in enumerate(cell_line_list))
-
-    #     # Add categorical encoding of cell lines
-    #     data_df = copy.deepcopy(data_df)  # To avoid pandas issue
-    #     data_df["cell_line_cat"] = data_df["cell_line_name"].apply(
-    #         lambda c: cell_line_to_idx_dict[c])
-
-    #     # Drug indices of combos
-    #     ddi_edge_idx = data_df[["drug_row_idx", "drug_col_idx"]].to_numpy().T
-    #     # Cell lines
-    #     ddi_edge_classes = data_df["cell_line_cat"].to_numpy()
-    #     # Scores
-    #     ddi_edge_bliss_max = data_df['synergy_bliss_max'].to_numpy()
-    #     ddi_edge_bliss_av = data_df['synergy_bliss'].to_numpy()
-    #     ddi_edge_css_av = data_df['css_ri'].to_numpy()
-
-    #     # Is in house
-    #     ddi_is_in_house = data_df['is_in_house'].to_numpy()
-
-    #     return ddi_edge_idx, ddi_edge_classes, ddi_edge_bliss_max, ddi_edge_bliss_av, ddi_edge_css_av, \
-    #         cell_line_to_idx_dict, cell_line_features, ddi_is_in_house
 
 ########################################################################################################################
 # Dataset objects where quality filtering is not default (default is high quality)
@@ -810,7 +755,7 @@ class DrugCombForDataAnalysis(DrugCombMatrixWithAE):
             # one_hot=True
             other_config={}
     ):
-        self.quality = 'off'
+        # self.quality = 'off' #This is going to be set to off in drugComb class
         super().__init__(study_name, AE_config, other_config)
 
     def process(self):
@@ -890,10 +835,8 @@ class DrugCombForDataAnalysis(DrugCombMatrixWithAE):
         
 
         # Scores
-        data.ddi_edge_bliss_max = torch.tensor(
-            ddi_edge_bliss_max, dtype=torch.float)
-        data.ddi_edge_bliss_av = torch.tensor(
-            ddi_edge_bliss_av, dtype=torch.float)
+        data.ddi_edge_bliss_max = torch.tensor(ddi_edge_bliss_max, dtype=torch.float)
+        data.ddi_edge_bliss_av = torch.tensor(ddi_edge_bliss_av, dtype=torch.float)
         data.ddi_edge_css_av = torch.tensor(ddi_edge_css_av, dtype=torch.float)
         data.ddi_edge_S_av = torch.tensor(ddi_edge_S_av, dtype=torch.float)
         data.ddi_edge_S_max = torch.tensor(ddi_edge_S_max, dtype=torch.float)
@@ -984,7 +927,7 @@ class DrugCombForDataAnalysisHQ(DrugCombForDataAnalysis):
             # one_hot=True
             other_config={}
     ):
-        self.quality = 'hight'
+        self.quality = 'high'
         self.study_name = "" # study can't be determined. If you need to determine study you should use 
         super().__init__(self.study_name, AE_config, other_config)
 
@@ -1003,5 +946,5 @@ class DrugCombForDataAnalysisOffQ(DrugCombForDataAnalysis):
             other_config={}
     ):
         self.study_name = "" # study can't be determined. If you need to determine study you should use 
-        self.quality = 'hight'
+        self.quality = 'off'
         super().__init__(self.study_name, AE_config, other_config)

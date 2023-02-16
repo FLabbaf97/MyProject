@@ -174,10 +174,10 @@ class BasicTrainer(tune.Trainable):
                 "bliss_max": self.data.ddi_edge_bliss_max,
                 "bliss_av": self.data.ddi_edge_bliss_av,
                 "css_av": self.data.ddi_edge_css_av,
-                # "loewe": self.data.ddi_edge_loewe,
-                # "S_max": self.data.ddi_edge_S_max,
-                # "S_av": self.data.ddi_edge_S_av,
-                # "S_sum": self.data.ddi_edge_S_sum,
+                "loewe": self.data.ddi_edge_loewe,
+                "S_max": self.data.ddi_edge_S_max,
+                "S_av": self.data.ddi_edge_S_av,
+                "S_sum": self.data.ddi_edge_S_sum,
             }
             if self.task == 'regression':
                 self.data.ddi_edge_response = possible_target_dicts[config["target"]]
