@@ -1,7 +1,7 @@
 import torch
 from torch import dropout, nn
 from torch import Tensor
-
+import numpy as np
 #import scipy.io as sio
 from copy import deepcopy
 
@@ -378,3 +378,29 @@ class MyClassification(torch.nn.Module):
         loss = self.criterion(comb, ground_truth_scores)
 
         return loss
+    
+
+class WeightedRegression(torch.nn.Module):
+    def __init__(self, data, config):
+        super(WeightedRegression, self).__init__()
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device_type)
+        self.criterion = nn.MSELoss(reduction='none')
+        predictor_layers = config["predictor_layers"]
+        self.predictor = self.get_predictor(data, config, predictor_layers)
+
+    def forward(self, data, drug_drug_batch):
+        return self.predictor(data, drug_drug_batch)
+
+    def get_predictor(self, data, config, predictor_layers):
+        return config["predictor"](data, config, predictor_layers)
+
+    def loss(self, output, drug_drug_batch):
+        comb = output
+        ground_truth_scores = drug_drug_batch[2][:, None]
+        loss = self.criterion(comb, comb)
+        # make a copy of targets and detach from computational graph
+        weights = abs(ground_truth_scores.clone().detach())
+        weights = np.log(weights + np.e)
+        weighted_loss = (loss * weights).mean()
+        return weighted_loss
