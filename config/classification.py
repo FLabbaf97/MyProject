@@ -54,7 +54,7 @@ pipeline_config = {
     # Train epoch and eval_epoch to use
     "train_epoch": train_epoch,
     "eval_epoch": eval_epoch,
-    "wandb_group": 'classification for different dropout'
+    "wandb_group": 'classification for different datasets'
 }
 
 predictor_config = {

@@ -624,7 +624,29 @@ class DrugCombMatrix:
                torch.tensor(valid_idx, dtype=torch.long), \
                torch.tensor(test_idx, dtype=torch.long)
 
-
+    def remove_nutral_points(self, threshold, target):
+        possible_target_dicts = {
+            "bliss_max": self.data.ddi_edge_bliss_max,
+            "bliss_av": self.data.ddi_edge_bliss_av,
+            "css_av": self.data.ddi_edge_css_av,
+            "loewe": self.data.ddi_edge_loewe,
+            "S_max": self.data.ddi_edge_S_max,
+            "S_av": self.data.ddi_edge_S_av,
+            "S_sum": self.data.ddi_edge_S_sum,
+        }
+        # filter drug_pairs and synergy_values based on threshold
+        mask = torch.abs(possible_target_dicts[target]) >= threshold
+        for attr in dir(self.data):
+            if attr.startswith('ddi_edge_idx'):
+                x = torch.zeros(2,mask.sum())
+                x[0] = torch.masked_select(self.data[attr][0], mask)
+                x[1] = torch.masked_select(self.data[attr][1], mask)
+                self.data[attr] = x
+                # self.data[attr][0] = torch.masked_select(
+                #     self.data[attr], mask2D)
+            elif attr.startswith("ddi_edge_"):
+                self.data[attr] = torch.masked_select(self.data[attr], mask)
+        return self
 ########################################################################################################################
 # Dataset objects where cell-line features are from an autoencoder
 ########################################################################################################################
