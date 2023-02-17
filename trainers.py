@@ -1,7 +1,7 @@
 import torch
 import os
 import copy
-from torch import optim
+from torch import device, optim
 from torch.utils.data import DataLoader
 from utils import get_tensor_dataset
 from torch.utils.data import random_split
@@ -65,8 +65,8 @@ def train_epoch(data, loader, model, optim, scheduler=None, task="regression"):
         summary_dict = {
             "loss_mean": epoch_loss / num_batches,
             "Accuracy": metrics.accuracy_score,
-            "AUROC": metrics.roc_auc_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
-            'AUPRC': metrics.average_precision_score(all_targets,  1/(1 + np.exp(-np.array(all_mean_preds)))),
+            "AUROC": metrics.roc_auc_score(all_targets,  all_mean_preds),
+            'AUPRC': metrics.average_precision_score(all_targets,  all_mean_preds),
             'mse': metrics.mean_squared_error(all_targets,all_mean_preds)
         }
 
@@ -158,32 +158,34 @@ class BasicTrainer(tune.Trainable):
             AE_config=AE_config,
             other_config = config
         )
-        # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
-        self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config) # duplication happen here
         
         self.task = 'regression' # default value
         if 'task' in config.keys():
             self.task=config['task']
             if 'threshold' in config.keys():
                 self.threshold = config['threshold']
-        self.data = dataset.data.to(self.device)
         
         # If a score is the target, we store it in the ddi_edge_response attribute of the data object
-        if "target" in config.keys():
-            possible_target_dicts = {
-                "bliss_max": self.data.ddi_edge_bliss_max,
-                "bliss_av": self.data.ddi_edge_bliss_av,
-                "css_av": self.data.ddi_edge_css_av,
-                "loewe": self.data.ddi_edge_loewe,
-                "S_max": self.data.ddi_edge_S_max,
-                "S_av": self.data.ddi_edge_S_av,
-                "S_sum": self.data.ddi_edge_S_sum,
-            }
-            if self.task == 'regression':
-                self.data.ddi_edge_response = possible_target_dicts[config["target"]]
-            else: 
-                self.data.ddi_edge_response = torch.where(
-                    possible_target_dicts[config["target"]] > self.threshold, 1, 0).type(torch.float32)
+        if(self.task == 'classification'):
+            dataset = dataset.remove_nutral_points(self.threshold, config["target"])
+        # Perform train/valid/test split. Test split is fixed regardless of the user defined seed
+        self.train_idxs, self.val_idxs, self.test_idxs = dataset.random_split(config) # duplication happen here
+        self.data=dataset.data.to(self.device)
+
+        possible_target_dicts = {
+            "bliss_max": self.data.ddi_edge_bliss_max,
+            "bliss_av": self.data.ddi_edge_bliss_av,
+            "css_av": self.data.ddi_edge_css_av,
+            "loewe": self.data.ddi_edge_loewe,
+            "S_max": self.data.ddi_edge_S_max,
+            "S_av": self.data.ddi_edge_S_av,
+            "S_sum": self.data.ddi_edge_S_sum,
+        }
+        self.data.ddi_edge_response = possible_target_dicts[config["target"]]
+        if(self.task=='classification'):
+            self.data.ddi_edge_response = torch.where(
+                self.data.ddi_edge_response > self.threshold, 1, 0).type(torch.float32)
+
         if "cell_feature" in config.keys():
             assert config['cell_feature'] in ['meta', 'one_hot', 'embd_mut', 'embd_cnv' , 'embd_expr' , 'pca']
             self.data.cell_line_features = self.data['cell_'+ config['cell_feature']]

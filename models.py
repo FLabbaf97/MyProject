@@ -316,13 +316,14 @@ class MyMLPPredictor(torch.nn.Module):
 
     def get_batch(self, data, drug_drug_batch):
 
-        drug_1s = drug_drug_batch[0][:, 0]  # Edge-tail drugs in the batch
-        drug_2s = drug_drug_batch[0][:, 1]  # Edge-head drugs in the batch
+        drug_1s = drug_drug_batch[0][:, 0].type('torch.LongTensor')  # Edge-tail drugs in the batch
+        drug_2s = drug_drug_batch[0][:, 1].type(
+            'torch.LongTensor')  # Edge-head drugs in the batch
         # Cell line of all examples in the batch
-        cell_lines = drug_drug_batch[1]
+        cell_lines = drug_drug_batch[1].type('torch.LongTensor')
 
         h_drug_1 = data.x_drugs[drug_1s]
-        h_drug_2 = data.x_drugs[drug_2s]
+        h_drug_2 = data.x_drugs[drug_1s]
 
         return h_drug_1, h_drug_2, cell_lines
 
@@ -398,9 +399,122 @@ class WeightedRegression(torch.nn.Module):
     def loss(self, output, drug_drug_batch):
         comb = output
         ground_truth_scores = drug_drug_batch[2][:, None]
-        loss = self.criterion(comb, comb)
+        loss = self.criterion(comb, ground_truth_scores)
         # make a copy of targets and detach from computational graph
         weights = abs(ground_truth_scores.clone().detach())
-        weights = np.log(weights + np.e)
+        weights = np.log(weights.cpu() + np.e).to(self.device)
         weighted_loss = (loss * weights).mean()
         return weighted_loss
+
+class MyMatchModel(torch.nn.Module):
+    def __init__(self, data, config, predictor_layers):
+
+        super(MyMLPPredictor, self).__init__()
+        self.cell_embed_len = data.cell_line_features.shape[1]
+        device_type = "cuda" if torch.cuda.is_available() else "cpu"
+        self.device = torch.device(device_type)
+    
+        #constructing cell-drug-network
+        self.drug_cell_layers = config["drug_cell_layers"]
+        cell_drug_net = []
+        cell_drug_net = self.add_layer(
+            cell_drug_net,
+            0,
+            data.x_drugs.shape[1] + self.cell_embed_len,
+            self.drug_cell_layers[0],
+            dropout=config['first_layer_dropout']
+
+        )
+        cell_drug_net = self.add_layer(
+            cell_drug_net,
+            0,
+            self.drug_cell_layers[0],
+            self.drug_embed_len,
+            dropout=config['middle_layer_dropout']
+        )
+
+        #synergy_net
+        self.syn_layers = predictor_layers
+        synergy_net = []
+        synergy_net = self.add_layer(
+            synergy_net,
+            0,
+            self.drug_cell_layers[-1]*2,
+            self.syn_layers[0],
+            dropout=config['first_layer_dropout']
+        )
+        for i in range(0, len(self.syn_layers)-1):
+            synergy_net = self.add_layer(
+                synergy_net,
+                i,
+                self.syn_layers[i],
+                self.syn_layers[i + 1],
+                dropout=config['middle_layer_dropout'] if i != len(
+                    self.syn_layers)-1 else 0
+            )
+        
+        #sensitivity_net
+        self.sensitivity_layers = config["sensitivity_layers"]
+        sen_net = []
+        sen_net = self.add_layer(
+            sen_net,
+            0,
+            self.drug_cell_layers[-1],
+            self.layer_dims[0],
+            dropout=config['first_layer_dropout']
+        )
+        for i in range(0, len(self.sensitivity_layers)-1):
+            sen_net = self.add_layer(
+                sen_net,
+                i,
+                self.sensitivity_layers[i],
+                self.sensitivity_layers[i + 1],
+                dropout=config['middle_layer_dropout'] if i != len(
+                    self.sensitivity_layers)-1 else 0
+            )
+
+        self.drug_cell_net = torch.nn.Sequential(*cell_drug_net)
+        self.synergy_net = torch.nn.Sequential(*synergy_net)
+        self.sen_net = torch.nn.Sequential(*sen_net)
+
+
+    def forward(self, data, drug_drug_batch):
+        h_drug_1, h_drug_2, cell_lines = self.get_batch(data, drug_drug_batch)
+        cell_features = data.cell_line_features[cell_lines]
+
+        # Apply before merge MLP
+        h_1_c = self.before_merge_mlp(h_drug_1, cell_features)
+        h_2_c = self.before_merge_mlp(h_drug_2, cell_features)
+
+        concatinated = torch.cat((h_1_c, h_2_c), 1)
+
+        comb = self.after_merge_mlp(concatinated)
+
+        return comb
+
+    def get_batch(self, data, drug_drug_batch):
+
+        drug_1s = drug_drug_batch[0][:, 0]  # Edge-tail drugs in the batch
+        drug_2s = drug_drug_batch[0][:, 1]  # Edge-head drugs in the batch
+        # Cell line of all examples in the batch
+        cell_lines = drug_drug_batch[1]
+
+        h_drug_1 = data.x_drugs[drug_1s]
+        h_drug_2 = data.x_drugs[drug_2s]
+
+        return h_drug_1, h_drug_2, cell_lines
+
+    def add_layer(self, layers, i, dim_i, dim_i_plus_1, activation=None, dropout=0):
+        layers.append(nn.Linear(dim_i, dim_i_plus_1))
+        if (dropout != 0):
+            if i != len(self.layer_dims) - 2:
+                layers.append(nn.Dropout(dropout))
+
+        if (activation):
+            layers.append(activation())
+        if i != len(self.layer_dims) - 2:
+            layers.append(nn.ReLU())
+        return layers
+
+
+
