@@ -4,7 +4,7 @@ from trainers import train_epoch, eval_epoch, BasicTrainer
 from utils import get_project_root
 from models import MyMLPPredictor
 from models import MyBaseline, MyClassification
-from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE, DrugCombMatrixWithAE_HQFilter, DrugCombMatrixWithAE_MQFilter, DrugCombMatrixWithAE_offQFilter, DrugCombForDataAnalysis
+from datasets.drugcomb_matrix_data import DrugCombMatrix, DrugCombMatrixWithAE, DrugCombMatrixWithAE_HQFilter, DrugCombMatrixWithAE_MQFilter, DrugCombMatrixWithAE_offQFilter, DrugCombForDataAnalysis, DrugCombForDataAnalysisHQ, DrugCombForDataAnalysisOffQ
 import sys
 import os
 
@@ -70,8 +70,8 @@ predictor_config = {
     "merge_n_layers_before_the_end": 2,
     "allow_neg_eigval": True,
     "drug_embed_len": 128,
-    'first_layer_dropout': tune.grid_search([0.2,0.5]),
-    'middle_layer_dropout': tune.grid_search([0.2, 0.5]),
+    'first_layer_dropout': 0.5,
+    'middle_layer_dropout': 0.2,
 }
 autorncoder_config = {
     "data": "data/processed/DepMap_expression_processed_1383_15806.csv",
@@ -90,8 +90,8 @@ model_config = {
 }
 
 dataset_config = {
-    "dataset": DrugCombForDataAnalysis,
-    "study_name": '',
+    "dataset": tune.grid_search([DrugCombForDataAnalysis, DrugCombForDataAnalysisHQ, DrugCombForDataAnalysisOffQ]),
+    "study_name": 'ALMANAC',
     "in_house_data": 'without',
     "rounds_to_include": [],
     "val_set_prop": 0.2,
@@ -129,7 +129,7 @@ configuration = {
     # "checkpoint_score_attr": 'eval/comb_r_squared',
     "keep_checkpoints_num": 1,
     "checkpoint_at_end": True,
-    "checkpoint_freq": 10,
+    "checkpoint_freq": 20,
     # "resources_per_trial": {"cpu": 8, "gpu": 0},
     "scheduler": None,
     "search_alg": None,
